@@ -13,6 +13,7 @@ import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
 import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { translate } from '@/i18n/i18n'
 
+/** Keep account previews current without switching accounts or polling usage again. */
 export function InlineUsageBars({
   limits,
   isFetching
@@ -23,8 +24,12 @@ export function InlineUsageBars({
   const display = normalizeUsagePercentageDisplay(
     useAppStore((state) => state.usagePercentageDisplay)
   )
-  // Why: tick the session countdown live via one boundary-scheduled clock, not just the usage poll (#5399).
-  const now = useResetCountdownClock([limits.session?.resetsAt])
+  // Why: inactive accounts can have weekly limits without a session window.
+  const now = useResetCountdownClock([
+    limits.session?.resetsAt,
+    limits.weekly?.resetsAt,
+    limits.fableWeekly?.resetsAt
+  ])
   const usageWindows = [
     limits.session
       ? {
@@ -38,14 +43,24 @@ export function InlineUsageBars({
       ? {
           key: 'weekly',
           used: clampUsedPercent(limits.weekly.usedPercent),
-          label: translate('auto.components.status.bar.StatusBar.5c938d39ac', 'wk')
+          label:
+            limits.weekly.resetsAt != null
+              ? formatRateLimitWindowChipLabel(limits.weekly, now)
+              : translate('auto.components.status.bar.StatusBar.5c938d39ac', 'wk')
         }
       : null,
     limits.fableWeekly
       ? {
           key: 'fableWeekly',
           used: clampUsedPercent(limits.fableWeekly.usedPercent),
-          label: translate('auto.components.status.bar.StatusBar.54e8d6bb2d', 'Fable')
+          label: [
+            translate('auto.components.status.bar.StatusBar.54e8d6bb2d', 'Fable'),
+            limits.fableWeekly.resetsAt != null
+              ? formatRateLimitWindowChipLabel(limits.fableWeekly, now)
+              : null
+          ]
+            .filter(Boolean)
+            .join(' ')
         }
       : null
   ].filter((window): window is { key: string; used: number; label: string } => window !== null)
