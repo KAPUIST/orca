@@ -65,16 +65,14 @@ export function InlineUsageBars({
       : null
   ].filter((window): window is { key: string; used: number; label: string } => window !== null)
 
+  // Why: translated countdown labels must wrap instead of clipping in the narrow account menu.
   return (
     <div
-      className={`grid w-full items-center gap-1.5 ${isFetching ? 'animate-pulse' : ''}`}
-      style={{
-        gridTemplateColumns: `repeat(${Math.max(1, usageWindows.length)}, minmax(0, 1fr))`
-      }}
+      className={`flex w-full flex-wrap items-center gap-1.5 ${isFetching ? 'animate-pulse' : ''}`}
     >
       {usageWindows.map((window) => (
-        <div key={window.key} className="flex min-w-0 items-center gap-1">
-          <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+        <div key={window.key} className="flex flex-auto items-center gap-1">
+          <div className="h-[4px] min-w-4 flex-1 overflow-hidden rounded-full bg-muted">
             {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
             <div
               className={`h-full rounded-full ${barColor(window.used)}`}
