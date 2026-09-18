@@ -23,6 +23,7 @@ vi.mock('@/i18n/i18n', () => ({
 const NOW = Date.UTC(2026, 8, 18, 12)
 const MINUTE = 60_000
 
+/** Omit the session window to verify weekly countdowns schedule their own updates. */
 function limitsFor(window: 'weekly' | 'fableWeekly', resetsAt: number | null): ProviderRateLimits {
   return {
     provider: window === 'weekly' ? 'codex' : 'claude',
