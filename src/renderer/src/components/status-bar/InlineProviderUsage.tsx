@@ -31,7 +31,7 @@ export function InlineUsageBars({
     limits.weekly?.resetsAt,
     limits.fableWeekly?.resetsAt
   ])
-  // Why: rows compare several accounts at once, so every countdown keeps its window name.
+  // Why: rows compare several accounts at once, so every window keeps the popover's name.
   const withCountdown = (name: string, resetsAt: number | null): string =>
     resetsAt != null ? `${name} ${formatResetDuration(resetsAt - now)}` : name
   const usageWindows = [
@@ -43,7 +43,7 @@ export function InlineUsageBars({
           label:
             limits.session.resetsAt != null
               ? withCountdown(
-                  translate('auto.components.status.bar.StatusBar.sessionWindow', 'Session'),
+                  translate('auto.components.status.bar.tooltip.94038ad2fa', 'Session'),
                   limits.session.resetsAt
                 )
               : formatRateLimitWindowChipLabel(limits.session, now)
@@ -54,7 +54,7 @@ export function InlineUsageBars({
           key: 'weekly',
           used: clampUsedPercent(limits.weekly.usedPercent),
           label: withCountdown(
-            translate('auto.components.status.bar.StatusBar.5c938d39ac', 'wk'),
+            translate('auto.components.status.bar.tooltip.252c096536', 'Weekly'),
             limits.weekly.resetsAt
           )
         }
@@ -71,30 +71,20 @@ export function InlineUsageBars({
       : null
   ].filter((window): window is { key: string; used: number; label: string } => window !== null)
 
-  // Why: a fixed two-line cell keeps every account row the same shape whether or not reset times are known.
+  // Why: one line per window keeps the same window at the same height in every account row.
   return (
-    <div
-      className={`grid w-full items-center gap-x-1.5 ${isFetching ? 'animate-pulse' : ''}`}
-      style={{
-        gridTemplateColumns: `repeat(${Math.max(1, usageWindows.length)}, minmax(0, 1fr))`
-      }}
-    >
+    <div className={`flex w-full flex-col gap-1 ${isFetching ? 'animate-pulse' : ''}`}>
       {usageWindows.map((window) => (
-        <div key={window.key} className="flex min-w-0 flex-col gap-0.5">
-          <div className="flex min-w-0 items-center gap-1">
-            <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-              {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
-              <div
-                className={`h-full rounded-full ${barColor(window.used)}`}
-                style={{ width: `${getDisplayedUsagePercentage(window.used, display)}%` }}
-              />
-            </div>
-            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-              {formatUsagePercentageLabel(window.used, display)}
-            </span>
+        <div key={window.key} className="flex min-w-0 items-center gap-2">
+          <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+            {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
+            <div
+              className={`h-full rounded-full ${barColor(window.used)}`}
+              style={{ width: `${getDisplayedUsagePercentage(window.used, display)}%` }}
+            />
           </div>
-          <span className="truncate text-[10px] tabular-nums text-muted-foreground">
-            {window.label}
+          <span className="w-[55%] shrink-0 truncate text-[10px] tabular-nums text-muted-foreground">
+            {`${formatUsagePercentageLabel(window.used, display)} · ${window.label}`}
           </span>
         </div>
       ))}
