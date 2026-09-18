@@ -10,6 +10,7 @@ import {
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
 import { barColor, clampUsedPercent } from './tooltip'
 import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
+import { formatResetDuration } from '../../../../shared/rate-limit-reset-format'
 import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { translate } from '@/i18n/i18n'
 
@@ -30,57 +31,70 @@ export function InlineUsageBars({
     limits.weekly?.resetsAt,
     limits.fableWeekly?.resetsAt
   ])
+  // Why: rows compare several accounts at once, so every countdown keeps its window name.
+  const withCountdown = (name: string, resetsAt: number | null): string =>
+    resetsAt != null ? `${name} ${formatResetDuration(resetsAt - now)}` : name
   const usageWindows = [
     limits.session
       ? {
           key: 'session',
           used: clampUsedPercent(limits.session.usedPercent),
-          // Why: live reset countdown (matches popover); '5h' window length only when resetsAt is unknown (#5399).
-          label: formatRateLimitWindowChipLabel(limits.session, now)
+          // Why: live reset countdown (#5399); '5h' window length only when resetsAt is unknown.
+          label:
+            limits.session.resetsAt != null
+              ? withCountdown(
+                  translate('auto.components.status.bar.StatusBar.sessionWindow', 'Session'),
+                  limits.session.resetsAt
+                )
+              : formatRateLimitWindowChipLabel(limits.session, now)
         }
       : null,
     limits.weekly
       ? {
           key: 'weekly',
           used: clampUsedPercent(limits.weekly.usedPercent),
-          label:
-            limits.weekly.resetsAt != null
-              ? formatRateLimitWindowChipLabel(limits.weekly, now)
-              : translate('auto.components.status.bar.StatusBar.5c938d39ac', 'wk')
+          label: withCountdown(
+            translate('auto.components.status.bar.StatusBar.5c938d39ac', 'wk'),
+            limits.weekly.resetsAt
+          )
         }
       : null,
     limits.fableWeekly
       ? {
           key: 'fableWeekly',
           used: clampUsedPercent(limits.fableWeekly.usedPercent),
-          label: [
+          label: withCountdown(
             translate('auto.components.status.bar.StatusBar.54e8d6bb2d', 'Fable'),
-            limits.fableWeekly.resetsAt != null
-              ? formatRateLimitWindowChipLabel(limits.fableWeekly, now)
-              : null
-          ]
-            .filter(Boolean)
-            .join(' ')
+            limits.fableWeekly.resetsAt
+          )
         }
       : null
   ].filter((window): window is { key: string; used: number; label: string } => window !== null)
 
-  // Why: translated countdown labels must wrap instead of clipping in the narrow account menu.
+  // Why: a fixed two-line cell keeps every account row the same shape whether or not reset times are known.
   return (
     <div
-      className={`flex w-full flex-wrap items-center gap-1.5 ${isFetching ? 'animate-pulse' : ''}`}
+      className={`grid w-full items-center gap-x-1.5 ${isFetching ? 'animate-pulse' : ''}`}
+      style={{
+        gridTemplateColumns: `repeat(${Math.max(1, usageWindows.length)}, minmax(0, 1fr))`
+      }}
     >
       {usageWindows.map((window) => (
-        <div key={window.key} className="flex flex-auto items-center gap-1">
-          <div className="h-[4px] min-w-4 flex-1 overflow-hidden rounded-full bg-muted">
-            {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
-            <div
-              className={`h-full rounded-full ${barColor(window.used)}`}
-              style={{ width: `${getDisplayedUsagePercentage(window.used, display)}%` }}
-            />
+        <div key={window.key} className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex min-w-0 items-center gap-1">
+            <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+              {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
+              <div
+                className={`h-full rounded-full ${barColor(window.used)}`}
+                style={{ width: `${getDisplayedUsagePercentage(window.used, display)}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+              {formatUsagePercentageLabel(window.used, display)}
+            </span>
           </div>
-          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-            {formatUsagePercentageLabel(window.used, display)} {window.label}
+          <span className="truncate text-[10px] tabular-nums text-muted-foreground">
+            {window.label}
           </span>
         </div>
       ))}

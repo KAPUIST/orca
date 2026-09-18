@@ -36,6 +36,8 @@ function limitsFor(window: 'weekly' | 'fableWeekly', resetsAt: number | null): P
   }
 }
 
+const NAME = { session: 'Session', weekly: 'wk', fableWeekly: 'Fable' } as const
+
 describe('account row reset countdowns', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -49,15 +51,15 @@ describe('account row reset countdowns', () => {
   it.each(['weekly', 'fableWeekly'] as const)(
     'ticks %s without a session window or a usage refresh',
     (window) => {
-      const prefix = window === 'fableWeekly' ? 'Fable ' : ''
       render(
         <InlineUsageBars limits={limitsFor(window, NOW + 80 * MINUTE + 5000)} isFetching={false} />
       )
-      expect(screen.getByText(`0% left ${prefix}1h 20m`)).toBeTruthy()
+      expect(screen.getByText('0% left')).toBeTruthy()
+      expect(screen.getByText(`${NAME[window]} 1h 20m`)).toBeTruthy()
       act(() => {
         vi.advanceTimersByTime(5001)
       })
-      expect(screen.getByText(`0% left ${prefix}1h 19m`)).toBeTruthy()
+      expect(screen.getByText(`${NAME[window]} 1h 19m`)).toBeTruthy()
     }
   )
 
@@ -65,7 +67,7 @@ describe('account row reset countdowns', () => {
     'keeps the %s label when the reset time is unknown',
     (window) => {
       render(<InlineUsageBars limits={limitsFor(window, null)} isFetching={false} />)
-      expect(screen.getByText(`0% left ${window === 'weekly' ? 'wk' : 'Fable'}`)).toBeTruthy()
+      expect(screen.getByText(NAME[window])).toBeTruthy()
       expect(vi.getTimerCount()).toBe(0)
     }
   )
@@ -74,14 +76,18 @@ describe('account row reset countdowns', () => {
     'shows an expired %s reset without negative time',
     (window) => {
       render(<InlineUsageBars limits={limitsFor(window, NOW - MINUTE)} isFetching={false} />)
-      expect(
-        screen.getByText(`0% left ${window === 'fableWeekly' ? 'Fable ' : ''}now`)
-      ).toBeTruthy()
+      expect(screen.getByText(`${NAME[window]} now`)).toBeTruthy()
     }
   )
 
-  it('keeps weekly and Fable windows distinguishable when both are present', () => {
+  it('names every window when session, weekly, and Fable resets are all known', () => {
     const limits = limitsFor('weekly', NOW + 2 * 24 * 60 * MINUTE)
+    limits.session = {
+      usedPercent: 20,
+      windowMinutes: 300,
+      resetsAt: NOW + 119 * MINUTE,
+      resetDescription: null
+    }
     limits.fableWeekly = {
       usedPercent: 50,
       windowMinutes: 10080,
@@ -89,7 +95,8 @@ describe('account row reset countdowns', () => {
       resetDescription: null
     }
     render(<InlineUsageBars limits={limits} isFetching={false} />)
-    expect(screen.getByText('0% left 2d')).toBeTruthy()
-    expect(screen.getByText('50% left Fable 1h 20m')).toBeTruthy()
+    expect(screen.getByText(`${NAME.session} 1h 59m`)).toBeTruthy()
+    expect(screen.getByText(`${NAME.weekly} 2d`)).toBeTruthy()
+    expect(screen.getByText(`${NAME.fableWeekly} 1h 20m`)).toBeTruthy()
   })
 })
