@@ -54,11 +54,11 @@ describe('account row reset countdowns', () => {
       render(
         <InlineUsageBars limits={limitsFor(window, NOW + 80 * MINUTE + 5000)} isFetching={false} />
       )
-      expect(screen.getByText(`0% left · ${NAME[window]} 1h 20m`)).toBeTruthy()
+      expect(screen.getByText(`${NAME[window]} 1h 20m`)).toBeTruthy()
       act(() => {
         vi.advanceTimersByTime(5001)
       })
-      expect(screen.getByText(`0% left · ${NAME[window]} 1h 19m`)).toBeTruthy()
+      expect(screen.getByText(`${NAME[window]} 1h 19m`)).toBeTruthy()
     }
   )
 
@@ -66,7 +66,7 @@ describe('account row reset countdowns', () => {
     'keeps the %s label when the reset time is unknown',
     (window) => {
       render(<InlineUsageBars limits={limitsFor(window, null)} isFetching={false} />)
-      expect(screen.getByText(`0% left · ${NAME[window]}`)).toBeTruthy()
+      expect(screen.getByText(`${NAME[window]}`)).toBeTruthy()
       expect(vi.getTimerCount()).toBe(0)
     }
   )
@@ -75,7 +75,7 @@ describe('account row reset countdowns', () => {
     'shows an expired %s reset without negative time',
     (window) => {
       render(<InlineUsageBars limits={limitsFor(window, NOW - MINUTE)} isFetching={false} />)
-      expect(screen.getByText(`0% left · ${NAME[window]} now`)).toBeTruthy()
+      expect(screen.getByText(`${NAME[window]} now`)).toBeTruthy()
     }
   )
 
@@ -94,8 +94,8 @@ describe('account row reset countdowns', () => {
       resetDescription: null
     }
     render(<InlineUsageBars limits={limits} isFetching={false} />)
-    expect(screen.getByText(`80% left · ${NAME.session} 1h 59m`)).toBeTruthy()
-    expect(screen.getByText(`0% left · ${NAME.weekly} 2d`)).toBeTruthy()
-    expect(screen.getByText(`50% left · ${NAME.fableWeekly} 1h 20m`)).toBeTruthy()
+    expect(screen.getByText(`${NAME.session} 1h 59m`)).toBeTruthy()
+    expect(screen.getByText(`${NAME.weekly} 2d`)).toBeTruthy()
+    expect(screen.getByText(`${NAME.fableWeekly} 1h 20m`)).toBeTruthy()
   })
 })

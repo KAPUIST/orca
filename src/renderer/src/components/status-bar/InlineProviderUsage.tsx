@@ -9,7 +9,6 @@ import {
 } from '../../../../shared/usage-percentage-display'
 import { useResetCountdownClock } from '@/hooks/useResetCountdownClock'
 import { barColor, clampUsedPercent } from './tooltip'
-import { formatRateLimitWindowChipLabel } from '@/lib/window-label-formatter'
 import { formatResetDuration } from '../../../../shared/rate-limit-reset-format'
 import { formatUsagePercentageLabel } from './usage-percentage-label'
 import { translate } from '@/i18n/i18n'
@@ -39,14 +38,10 @@ export function InlineUsageBars({
       ? {
           key: 'session',
           used: clampUsedPercent(limits.session.usedPercent),
-          // Why: live reset countdown (#5399); '5h' window length only when resetsAt is unknown.
-          label:
-            limits.session.resetsAt != null
-              ? withCountdown(
-                  translate('auto.components.status.bar.tooltip.94038ad2fa', 'Session'),
-                  limits.session.resetsAt
-                )
-              : formatRateLimitWindowChipLabel(limits.session, now)
+          label: withCountdown(
+            translate('auto.components.status.bar.tooltip.94038ad2fa', 'Session'),
+            limits.session.resetsAt
+          )
         }
       : null,
     limits.weekly
@@ -71,20 +66,28 @@ export function InlineUsageBars({
       : null
   ].filter((window): window is { key: string; used: number; label: string } => window !== null)
 
-  // Why: one line per window keeps the same window at the same height in every account row.
+  // Why: a fixed name line under each bar keeps every account row the same shape and height.
   return (
-    <div className={`flex w-full flex-col gap-1 ${isFetching ? 'animate-pulse' : ''}`}>
+    <div
+      className={`grid w-full items-center gap-x-2 ${isFetching ? 'animate-pulse' : ''}`}
+      style={{ gridTemplateColumns: `repeat(${Math.max(1, usageWindows.length)}, minmax(0, 1fr))` }}
+    >
       {usageWindows.map((window) => (
-        <div key={window.key} className="flex min-w-0 items-center gap-2">
-          <div className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
-            {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
-            <div
-              className={`h-full rounded-full ${barColor(window.used)}`}
-              style={{ width: `${getDisplayedUsagePercentage(window.used, display)}%` }}
-            />
+        <div key={window.key} className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex min-w-0 items-center gap-1">
+            <div className="h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-muted">
+              {/* Why: fill follows the selected percentage; color still signals consumption urgency. */}
+              <div
+                className={`h-full rounded-full ${barColor(window.used)}`}
+                style={{ width: `${getDisplayedUsagePercentage(window.used, display)}%` }}
+              />
+            </div>
+            <span className="shrink-0 text-[10px] leading-3 tabular-nums text-muted-foreground">
+              {formatUsagePercentageLabel(window.used, display)}
+            </span>
           </div>
-          <span className="w-[55%] shrink-0 truncate text-[10px] tabular-nums text-muted-foreground">
-            {`${formatUsagePercentageLabel(window.used, display)} · ${window.label}`}
+          <span className="truncate text-[10px] leading-3 tabular-nums text-muted-foreground">
+            {window.label}
           </span>
         </div>
       ))}

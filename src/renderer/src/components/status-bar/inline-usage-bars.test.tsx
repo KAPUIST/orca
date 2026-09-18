@@ -66,9 +66,12 @@ describe('InlineUsageBars', () => {
     )
 
     // Why: bars show % used with explicit "used" so compact labels are not ambiguous.
-    expect(markup).toContain('>32% used · 5h</span>')
-    expect(markup).toContain('>16% used · Weekly</span>')
-    expect(markup).toContain('>42% used · Fable</span>')
+    expect(markup).toContain('>32% used</span>')
+    expect(markup).toContain('>Session</span>')
+    expect(markup).toContain('>16% used</span>')
+    expect(markup).toContain('>Weekly</span>')
+    expect(markup).toContain('>42% used</span>')
+    expect(markup).toContain('>Fable</span>')
   })
 
   it('derives the collapsed session label from resetsAt (#5399)', async () => {
@@ -81,11 +84,14 @@ describe('InlineUsageBars', () => {
 
     const markup = renderToStaticMarkup(<InlineUsageBars limits={limits} isFetching={false} />)
 
-    expect(markup).toContain('>32% used · Session 1h 20m</span>')
-    expect(markup).not.toContain('· 5h</span>')
+    expect(markup).toContain('>32% used</span>')
+    expect(markup).toContain('>Session 1h 20m</span>')
+    expect(markup).not.toContain('>Session</span>')
     // Non-session bars keep their fixed labels.
-    expect(markup).toContain('>16% used · Weekly</span>')
-    expect(markup).toContain('>42% used · Fable</span>')
+    expect(markup).toContain('>16% used</span>')
+    expect(markup).toContain('>Weekly</span>')
+    expect(markup).toContain('>42% used</span>')
+    expect(markup).toContain('>Fable</span>')
   })
 
   it('shows "now" for an already-expired session reset', async () => {
@@ -96,7 +102,8 @@ describe('InlineUsageBars', () => {
 
     const markup = renderToStaticMarkup(<InlineUsageBars limits={limits} isFetching={false} />)
 
-    expect(markup).toContain('>32% used · Session now</span>')
+    expect(markup).toContain('>32% used</span>')
+    expect(markup).toContain('>Session now</span>')
   })
 
   it('keeps the footer meter for weekly-only Codex usage', async () => {
@@ -132,9 +139,12 @@ describe('InlineUsageBars', () => {
       <InlineUsageBars limits={claudeLimits()} isFetching={false} />
     )
 
-    expect(markup).toContain('>68% left · 5h</span>')
-    expect(markup).toContain('>84% left · Weekly</span>')
-    expect(markup).toContain('>58% left · Fable</span>')
+    expect(markup).toContain('>68% left</span>')
+    expect(markup).toContain('>Session</span>')
+    expect(markup).toContain('>84% left</span>')
+    expect(markup).toContain('>Weekly</span>')
+    expect(markup).toContain('>58% left</span>')
+    expect(markup).toContain('>Fable</span>')
     expect(markup).toContain('width:68%')
     expect(markup).toContain('width:84%')
     expect(markup).toContain('width:58%')
