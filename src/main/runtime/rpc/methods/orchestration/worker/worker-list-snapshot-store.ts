@@ -76,7 +76,7 @@ export function readWorkerListSnapshot(
   ) {
     throw new OrchestrationError(
       'invalid_argument',
-      'A worker-list cursor must be reused with the same Run and terminal-state filter.'
+      'A worker-list cursor must be reused with the same order, Run and terminal-state filter.'
     )
   }
   return snapshot
