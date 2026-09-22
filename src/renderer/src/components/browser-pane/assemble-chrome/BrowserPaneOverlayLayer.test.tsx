@@ -195,6 +195,55 @@ describe('BrowserPaneOverlayLayer', () => {
     )
   })
 
+  it('focuses the owning split when a browser guest takes focus', () => {
+    mocks.state = createState()
+    mocks.state.groupsByWorktree['wt-1'] = [
+      ...mocks.state.groupsByWorktree['wt-1'],
+      {
+        id: 'group-2',
+        worktreeId: 'wt-1',
+        activeTabId: 'tab-b',
+        tabOrder: ['tab-b']
+      }
+    ]
+    mocks.state.unifiedTabsByWorktree['wt-1'] = mocks.state.unifiedTabsByWorktree['wt-1'].map(
+      (tab) => (tab.id === 'tab-b' ? { ...tab, groupId: 'group-2' } : tab)
+    )
+    mocks.state.activeGroupIdByWorktree = { 'wt-1': 'group-1' }
+
+    const view = render(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive />)
+    const slot = view.container.querySelector('[data-browser-overlay-tab-id="browser-b"]')!
+    const guest = document.createElement('webview')
+    slot.append(guest)
+    const activeElement = vi.spyOn(document, 'activeElement', 'get').mockReturnValue(guest)
+
+    try {
+      expect(mocks.focusGroup).not.toHaveBeenCalled()
+
+      window.dispatchEvent(new Event('blur'))
+
+      expect(mocks.focusGroup).toHaveBeenCalledWith('wt-1', 'group-2')
+    } finally {
+      activeElement.mockRestore()
+    }
+  })
+
+  it('does not focus a split when a window blur leaves focus outside its browser slot', () => {
+    render(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive />)
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    const activeElement = vi.spyOn(document, 'activeElement', 'get').mockReturnValue(outside)
+
+    try {
+      window.dispatchEvent(new Event('blur'))
+
+      expect(mocks.focusGroup).not.toHaveBeenCalled()
+    } finally {
+      activeElement.mockRestore()
+      outside.remove()
+    }
+  })
+
   it('restores 200 tabs on demand and preserves viewport roots across parking and selection', () => {
     const browsers = Array.from({ length: 200 }, (_, index) =>
       createBrowserTab(`browser-${index}`, [`page-${index}`])

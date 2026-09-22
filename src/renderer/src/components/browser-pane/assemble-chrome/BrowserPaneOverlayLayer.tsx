@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { registerBrowserOverlaySlotViewport } from '../host-guest/browser-page-viewport'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '../../../store'
@@ -48,6 +48,7 @@ const BrowserOverlaySlot = memo(function BrowserOverlaySlot({
   chromeShortcutScope,
   onFocusOwningGroup
 }: BrowserOverlaySlotProps): React.JSX.Element {
+  const slotRef = useRef<HTMLDivElement | null>(null)
   // Why: persistent page viewports (webview guests) live under this root so they survive BrowserPane chrome unmounts without reparenting.
   const setSlotViewportRef = useCallback(
     (node: HTMLDivElement | null): void => {
@@ -96,8 +97,20 @@ const BrowserOverlaySlot = memo(function BrowserOverlaySlot({
     }
   }, [groupId, onFocusOwningGroup])
 
+  useEffect(() => {
+    // Why: a click into a webview guest blurs the embedder without bubbling focus into this slot.
+    const syncWebviewFocus = (): void => {
+      if (slotRef.current?.contains(document.activeElement)) {
+        handleFocus()
+      }
+    }
+    window.addEventListener('blur', syncWebviewFocus)
+    return () => window.removeEventListener('blur', syncWebviewFocus)
+  }, [handleFocus])
+
   return (
     <div
+      ref={slotRef}
       style={style}
       className="relative flex min-h-0 flex-1 flex-col"
       data-browser-overlay-tab-id={browserTab.id}

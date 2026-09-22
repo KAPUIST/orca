@@ -13,8 +13,11 @@ type TerminalBrowserSplitFixture = {
 }
 
 type BrowserSplitFixture = {
+  firstBrowserGroupId: string
   firstBrowserPageId: string
   firstBrowserTabId: string
+  secondBrowserGroupId: string
+  secondBrowserPageId: string
   secondBrowserTabId: string
 }
 
@@ -92,13 +95,19 @@ async function createBrowserSplit(page: Page): Promise<BrowserSplitFixture> {
       focusAddressBar: false,
       targetGroupId: secondBrowserGroupId
     })
-    const firstBrowserPageId = firstBrowserTab.activePageId
-    if (!firstBrowserPageId) {
-      throw new Error('First active browser page unavailable')
+    const [firstBrowserPageId, secondBrowserPageId] = [
+      firstBrowserTab.activePageId,
+      secondBrowserTab.activePageId
+    ]
+    if (!firstBrowserPageId || !secondBrowserPageId) {
+      throw new Error('Active browser page unavailable')
     }
     return {
+      firstBrowserGroupId,
       firstBrowserPageId,
       firstBrowserTabId: firstBrowserTab.id,
+      secondBrowserGroupId,
+      secondBrowserPageId,
       secondBrowserTabId: secondBrowserTab.id
     }
   })
@@ -313,6 +322,28 @@ test.describe('browser split shortcuts', () => {
         )
       )
       .toBeNull()
+  })
+
+  test('focuses the split that owns a browser guest', async ({ orcaPage }) => {
+    const fixture = await createBrowserSplit(orcaPage)
+    await focusBrowserGroup(orcaPage, fixture.firstBrowserGroupId)
+    await waitForBrowserGuestRegistration(
+      orcaPage,
+      fixture.secondBrowserTabId,
+      fixture.secondBrowserPageId
+    )
+
+    await orcaPage.evaluate((browserTabId) => {
+      const webview = document.querySelector(
+        `[data-browser-overlay-tab-id="${browserTabId}"] webview`
+      )
+      if (!webview) {
+        throw new Error('Browser guest unavailable')
+      }
+      webview.focus()
+    }, fixture.secondBrowserTabId)
+
+    await waitForFocusedGroup(orcaPage, fixture.secondBrowserGroupId)
   })
 
   test('keeps browser Find available when split focus state is temporarily missing', async ({
