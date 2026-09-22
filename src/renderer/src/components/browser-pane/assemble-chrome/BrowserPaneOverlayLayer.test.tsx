@@ -265,6 +265,22 @@ describe('BrowserPaneOverlayLayer', () => {
     }
   })
 
+  it('removes the blur listener when parked and unmounted', () => {
+    const add = vi.spyOn(window, 'addEventListener')
+    const remove = vi.spyOn(window, 'removeEventListener')
+    const view = render(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive />)
+    const first = add.mock.calls.find(([type]) => type === 'blur')?.[1]
+    expect(first).toBeTypeOf('function')
+    view.rerender(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive={false} />)
+    expect(remove).toHaveBeenCalledWith('blur', first)
+    view.rerender(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive />)
+    const second = add.mock.calls.findLast(([type]) => type === 'blur')?.[1]
+    view.unmount()
+    expect(remove).toHaveBeenCalledWith('blur', second)
+    add.mockRestore()
+    remove.mockRestore()
+  })
+
   it('does not focus a split when a window blur leaves focus outside its browser slot', () => {
     render(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive />)
     const outside = document.createElement('button')
