@@ -228,6 +228,43 @@ describe('BrowserPaneOverlayLayer', () => {
     }
   })
 
+  it.each([
+    { name: 'browser chrome', tag: 'input', tab: 'browser-a', active: true, focused: 'other' },
+    {
+      name: 'already focused guest',
+      tag: 'webview',
+      tab: 'browser-a',
+      active: true,
+      focused: 'group-1'
+    },
+    {
+      name: 'inactive tab guest',
+      tag: 'webview',
+      tab: 'browser-b',
+      active: true,
+      focused: 'other'
+    },
+    {
+      name: 'inactive worktree guest',
+      tag: 'webview',
+      tab: 'browser-a',
+      active: false,
+      focused: 'other'
+    }
+  ])('ignores window blur for $name', ({ tag, tab, active, focused }) => {
+    mocks.state!.activeGroupIdByWorktree = { 'wt-1': focused }
+    const view = render(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive={active} />)
+    const element = document.createElement(tag)
+    view.container.querySelector(`[data-browser-overlay-tab-id="${tab}"]`)!.append(element)
+    const activeElement = vi.spyOn(document, 'activeElement', 'get').mockReturnValue(element)
+    try {
+      window.dispatchEvent(new Event('blur'))
+      expect(mocks.focusGroup).not.toHaveBeenCalled()
+    } finally {
+      activeElement.mockRestore()
+    }
+  })
+
   it('does not focus a split when a window blur leaves focus outside its browser slot', () => {
     render(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive />)
     const outside = document.createElement('button')

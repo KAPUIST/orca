@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
+import { memo, useCallback, useEffect, useMemo } from 'react'
 import { registerBrowserOverlaySlotViewport } from '../host-guest/browser-page-viewport'
 import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '../../../store'
@@ -48,7 +48,6 @@ const BrowserOverlaySlot = memo(function BrowserOverlaySlot({
   chromeShortcutScope,
   onFocusOwningGroup
 }: BrowserOverlaySlotProps): React.JSX.Element {
-  const slotRef = useRef<HTMLDivElement | null>(null)
   // Why: persistent page viewports (webview guests) live under this root so they survive BrowserPane chrome unmounts without reparenting.
   const setSlotViewportRef = useCallback(
     (node: HTMLDivElement | null): void => {
@@ -97,20 +96,8 @@ const BrowserOverlaySlot = memo(function BrowserOverlaySlot({
     }
   }, [groupId, onFocusOwningGroup])
 
-  useEffect(() => {
-    // Why: a click into a webview guest blurs the embedder without bubbling focus into this slot.
-    const syncWebviewFocus = (): void => {
-      if (slotRef.current?.contains(document.activeElement)) {
-        handleFocus()
-      }
-    }
-    window.addEventListener('blur', syncWebviewFocus)
-    return () => window.removeEventListener('blur', syncWebviewFocus)
-  }, [handleFocus])
-
   return (
     <div
-      ref={slotRef}
       style={style}
       className="relative flex min-h-0 flex-1 flex-col"
       data-browser-overlay-tab-id={browserTab.id}
@@ -185,6 +172,28 @@ const BrowserPaneOverlayLayer = memo(function BrowserPaneOverlayLayer({
     }
     return entries
   }, [groupActiveTabById, unifiedTabs])
+
+  useEffect(() => {
+    if (!isWorktreeActive) {
+      return
+    }
+    // Why: guest focus blurs the embedder without bubbling through the overlay.
+    const syncWebviewFocus = (): void => {
+      const activeElement = document.activeElement
+      if (activeElement?.tagName !== 'WEBVIEW') {
+        return
+      }
+      const browserTabId = activeElement
+        .closest('[data-browser-overlay-tab-id]')
+        ?.getAttribute('data-browser-overlay-tab-id')
+      const assignment = browserTabId ? assignments.get(browserTabId) : undefined
+      if (assignment?.isActiveInGroup && assignment.groupId !== focusedGroupId) {
+        focusOwningGroup(assignment.groupId)
+      }
+    }
+    window.addEventListener('blur', syncWebviewFocus)
+    return () => window.removeEventListener('blur', syncWebviewFocus)
+  }, [assignments, focusedGroupId, focusOwningGroup, isWorktreeActive])
 
   return (
     <>
