@@ -346,13 +346,14 @@ test.describe('browser split shortcuts', () => {
     await waitForFocusedGroup(orcaPage, fixture.secondBrowserGroupId)
     await expect
       .poll(() =>
-        orcaPage.evaluate(() =>
-          document.activeElement
-            ?.closest('[data-browser-overlay-tab-id]')
-            ?.getAttribute('data-browser-overlay-tab-id')
-        )
+        orcaPage.evaluate((browserTabId) => {
+          const webview = document.querySelector(
+            `[data-browser-overlay-tab-id="${browserTabId}"] webview`
+          )
+          return webview !== null && document.activeElement === webview
+        }, fixture.secondBrowserTabId)
       )
-      .toBe(fixture.secondBrowserTabId)
+      .toBe(true)
   })
 
   test('keeps browser Find available when split focus state is temporarily missing', async ({
