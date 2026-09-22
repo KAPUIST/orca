@@ -529,12 +529,14 @@ describe('BrowserPaneOverlayLayer', () => {
   })
 })
 
+/** Uses static markup for mount-policy assertions that do not depend on interaction effects. */
 function renderOverlay({ isWorktreeActive }: { isWorktreeActive: boolean }): string {
   return renderToStaticMarkup(
     <BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive={isWorktreeActive} />
   )
 }
 
+/** Reads the rendered slot's display policy so retained hidden guests remain distinguishable. */
 function slotDisplay(browserTabId: string): string {
   const view = render(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive={true} />)
   const slot = view.container.querySelector<HTMLElement>(

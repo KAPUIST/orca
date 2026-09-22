@@ -421,6 +421,7 @@ describe('setupGuestShortcutForwarding', () => {
     } as unknown as Electron.WebContents
   }
 
+  /** Exercises the registered key handler with platform defaults and exposes cancellation. */
   function triggerBeforeInput(input: Partial<Electron.Input>): ReturnType<typeof vi.fn> {
     const handler = guestOnMock.mock.calls.find((call) => call[0] === 'before-input-event')?.[1] as
       | ((event: Electron.Event, input: Electron.Input) => void)
@@ -441,6 +442,7 @@ describe('setupGuestShortcutForwarding', () => {
     return preventDefault
   }
 
+  /** Exercises Electron's native zoom path separately from keyboard shortcut dispatch. */
   function triggerZoomChanged(direction: 'in' | 'out' | 'reset'): ReturnType<typeof vi.fn> {
     const handler = guestOnMock.mock.calls.find((call) => call[0] === 'zoom-changed')?.[1] as
       | ((event: Electron.Event, direction: 'in' | 'out' | 'reset') => void)

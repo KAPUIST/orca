@@ -41,7 +41,7 @@ type BrowserOverlaySlotProps = {
   onFocusOwningGroup: ((groupId: string) => void) | undefined
 }
 
-// Why: memoize each slot so unrelated worktree mutations don't cascade a re-render into every BrowserPane subtree.
+/** Memoizes each slot so unrelated worktree mutations do not rerender every browser pane. */
 const BrowserOverlaySlot = memo(function BrowserOverlaySlot({
   browserTab,
   isWorktreeActive,
