@@ -119,7 +119,7 @@ const BrowserOverlaySlot = memo(function BrowserOverlaySlot({
   )
 })
 
-// Why: memoize so parent re-renders on props this layer doesn't consume don't rerun its selector or assignments mapping (focused-split state comes from the store selector below, not props).
+/** Keeps guest overlays mounted across split moves; memoization skips unrelated parent renders. */
 const BrowserPaneOverlayLayer = memo(function BrowserPaneOverlayLayer({
   worktreeId,
   isWorktreeActive

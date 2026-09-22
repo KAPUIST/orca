@@ -546,6 +546,7 @@ function slotDisplay(browserTabId: string): string {
   return slot.style.display
 }
 
+/** Seeds one focused group with active and background browser tabs to exercise ownership guards. */
 function createState(): MockAppState {
   const browserA = createBrowserTab('browser-a', ['page-a'])
   const browserB = createBrowserTab('browser-b', ['page-b'])

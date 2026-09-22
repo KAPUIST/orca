@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events'
 import { describe, expect, it, vi } from 'vitest'
 import { setupGuestShortcutForwarding } from './browser-guest-shortcut-forwarding'
 
+/** Captures ownership and shortcut messages together so tests can verify their ordering. */
 function createHarness() {
   const events = new EventEmitter()
   const send = vi.fn()

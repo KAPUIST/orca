@@ -20,7 +20,7 @@ import {
   type ShouldForwardDictationShortcut
 } from './browser-guest-shortcut-dispatch'
 
-// Why: a focused webview guest is its own Chromium process whose key events never reach the renderer; forward shortcuts from here.
+/** Bridges guest input that cannot reach the host renderer; returns listener cleanup. */
 export function setupGuestShortcutForwarding(args: {
   browserTabId: string
   guest: Electron.WebContents
@@ -45,9 +45,11 @@ export function setupGuestShortcutForwarding(args: {
   let ctrlTabSwitching = false
   const doubleTapDetector = new ModifierDoubleTapDetector()
   const resetDoubleTapDetector = (): void => doubleTapDetector.reset()
+  /** Sends the registered page ID so the renderer can resolve its current owning split. */
   const notifyGuestInteraction = (): void => {
     resolveRenderer(browserTabId)?.send('ui:browserGuestInteraction', browserTabId)
   }
+  /** Claims split focus on presses, leaving hover and scrolling free of focus changes. */
   const mouseHandler = (_event: Electron.Event, input: Electron.MouseInputEvent): void => {
     if (input.type === 'mouseDown') {
       notifyGuestInteraction()
@@ -74,8 +76,8 @@ export function setupGuestShortcutForwarding(args: {
     forwardBrowserPageZoom
   }
 
+  /** Reports split ownership before forwarding shortcuts from a separate guest process. */
   const handler = (event: Electron.Event, input: Electron.Input): void => {
-    // Why: update the owning split before forwarding shortcuts from a separate guest process.
     if (input.type === 'keyDown') {
       notifyGuestInteraction()
     }

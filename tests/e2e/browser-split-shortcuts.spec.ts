@@ -62,6 +62,7 @@ async function createTerminalBrowserSplit(page: Page): Promise<TerminalBrowserSp
   })
 }
 
+/** Seeds two browser splits; a served URL avoids the about:blank overlay during guest click tests. */
 async function createBrowserSplit(page: Page, url = 'about:blank'): Promise<BrowserSplitFixture> {
   return page.evaluate((url) => {
     const store = window.__store
@@ -388,6 +389,7 @@ test.describe('browser split shortcuts', () => {
           })
         )
       }
+      /** Pane actions render only in the focused split, providing a visible ownership signal. */
       const focusedControls = (groupId: string) =>
         orcaPage.locator(
           `[data-tab-group-strip-id="${groupId}"] button[aria-haspopup="menu"][data-slot="tooltip-trigger"]`

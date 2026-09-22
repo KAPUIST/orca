@@ -409,6 +409,7 @@ describe('setupGuestShortcutForwarding', () => {
     } as unknown as Electron.WebContents
   }
 
+  /** Isolates shortcut assertions; interaction messages have separate ordering tests. */
   function makeRenderer() {
     // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the forwarding binding only calls this renderer stub through send.
     return {
