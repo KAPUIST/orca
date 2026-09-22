@@ -16,6 +16,8 @@ import {
 } from '@/lib/pane-manager/client-hosted-browser-row-state'
 import { ClientHostedBrowserHostRowPane } from '../client-hosted-browser-host-row-pane'
 import { useAnyBrowserPageMountAdmission } from '../host-guest/browser-page-mount-admission'
+import { isBrowserAutomationVisible } from '../host-guest/browser-automation-visibility'
+import { isBrowserPageMobileDriven } from '@/lib/pane-manager/browser-mobile-driver-state'
 
 // Why: Electron <webview> destroys its guest on DOM reparent, so BrowserPanes render at worktree level and moving a tab between groups only swaps the overlay's CSS position-anchor.
 
@@ -177,23 +179,30 @@ const BrowserPaneOverlayLayer = memo(function BrowserPaneOverlayLayer({
     if (!isWorktreeActive) {
       return
     }
-    // Why: guest focus blurs the embedder without bubbling through the overlay.
-    const syncWebviewFocus = (): void => {
-      const activeElement = document.activeElement
-      if (activeElement?.tagName !== 'WEBVIEW') {
+    return window.api.ui.onBrowserGuestInteraction((browserPageId) => {
+      // Why: consecutive guest events can arrive before React renders the new focused group.
+      const state = useAppStore.getState()
+      if (
+        state.activeWorktreeId !== worktreeId ||
+        isBrowserAutomationVisible(browserPageId) ||
+        isBrowserPageMobileDriven(browserPageId)
+      ) {
         return
       }
-      const browserTabId = activeElement
-        .closest('[data-browser-overlay-tab-id]')
-        ?.getAttribute('data-browser-overlay-tab-id')
-      const assignment = browserTabId ? assignments.get(browserTabId) : undefined
-      if (assignment?.isActiveInGroup && assignment.groupId !== focusedGroupId) {
-        focusOwningGroup(assignment.groupId)
+      const browserTab = state.browserTabsByWorktree[worktreeId]?.find(
+        (tab) => (tab.activePageId ?? tab.id) === browserPageId
+      )
+      const tab = state.unifiedTabsByWorktree[worktreeId]?.find(
+        (candidate) => candidate.contentType === 'browser' && candidate.entityId === browserTab?.id
+      )
+      const group = state.groupsByWorktree[worktreeId]?.find(
+        (candidate) => candidate.id === tab?.groupId && candidate.activeTabId === tab?.id
+      )
+      if (group && group.id !== state.activeGroupIdByWorktree[worktreeId]) {
+        state.focusGroup(worktreeId, group.id)
       }
-    }
-    window.addEventListener('blur', syncWebviewFocus)
-    return () => window.removeEventListener('blur', syncWebviewFocus)
-  }, [assignments, focusedGroupId, focusOwningGroup, isWorktreeActive])
+    })
+  }, [worktreeId, isWorktreeActive])
 
   return (
     <>

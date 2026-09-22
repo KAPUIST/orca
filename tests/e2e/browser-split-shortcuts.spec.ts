@@ -1,3 +1,4 @@
+import { createServer } from 'node:http'
 import { expect, test } from './helpers/orca-app'
 import type { Page } from '@stablyai/playwright-test'
 import { focusActiveTerminalInput } from './helpers/terminal'
@@ -61,8 +62,8 @@ async function createTerminalBrowserSplit(page: Page): Promise<TerminalBrowserSp
   })
 }
 
-async function createBrowserSplit(page: Page): Promise<BrowserSplitFixture> {
-  return page.evaluate(() => {
+async function createBrowserSplit(page: Page, url = 'about:blank'): Promise<BrowserSplitFixture> {
+  return page.evaluate((url) => {
     const store = window.__store
     if (!store) {
       throw new Error('Store unavailable')
@@ -77,7 +78,7 @@ async function createBrowserSplit(page: Page): Promise<BrowserSplitFixture> {
     if (!firstBrowserGroupId) {
       throw new Error('First browser split unavailable')
     }
-    const firstBrowserTab = state.createBrowserTab(worktreeId, 'about:blank', {
+    const firstBrowserTab = state.createBrowserTab(worktreeId, url, {
       activate: true,
       focusAddressBar: false,
       targetGroupId: firstBrowserGroupId
@@ -90,7 +91,7 @@ async function createBrowserSplit(page: Page): Promise<BrowserSplitFixture> {
     if (!secondBrowserGroupId) {
       throw new Error('Second browser split unavailable')
     }
-    const secondBrowserTab = state.createBrowserTab(worktreeId, 'about:blank', {
+    const secondBrowserTab = state.createBrowserTab(worktreeId, url, {
       activate: true,
       focusAddressBar: false,
       targetGroupId: secondBrowserGroupId
@@ -110,7 +111,7 @@ async function createBrowserSplit(page: Page): Promise<BrowserSplitFixture> {
       secondBrowserPageId,
       secondBrowserTabId: secondBrowserTab.id
     }
-  })
+  }, url)
 }
 
 function browserAddressBar(page: Page, browserTabId: string) {
@@ -251,6 +252,7 @@ test.describe('browser split shortcuts', () => {
   test.beforeEach(async ({ orcaPage }) => {
     await waitForSessionReady(orcaPage)
     await waitForActiveWorktree(orcaPage)
+    await orcaPage.evaluate(() => window.__store!.getState().updateSettings({ uiLanguage: 'en' }))
     await ensureTerminalVisible(orcaPage)
   })
 
@@ -324,36 +326,121 @@ test.describe('browser split shortcuts', () => {
       .toBeNull()
   })
 
-  test('focuses the split that owns a browser guest', async ({ orcaPage }) => {
-    const fixture = await createBrowserSplit(orcaPage)
-    await focusBrowserGroup(orcaPage, fixture.firstBrowserGroupId)
-    await waitForBrowserGuestRegistration(
-      orcaPage,
-      fixture.secondBrowserTabId,
-      fixture.secondBrowserPageId
-    )
-
-    await orcaPage.evaluate((browserTabId) => {
-      const webview = document.querySelector(
-        `[data-browser-overlay-tab-id="${browserTabId}"] webview`
+  test('routes guest clicks and Ctrl+Tab to the owning split', async ({
+    orcaPage,
+    electronApp
+  }) => {
+    const server = createServer((_request, response) => {
+      response.setHeader('Content-Type', 'text/html')
+      response.end(
+        '<title>Split focus fixture</title><input id="target" autofocus><script>document.addEventListener("mousedown", () => document.body.dataset.clicked = "true")</script>'
       )
-      if (!webview) {
-        throw new Error('Browser guest unavailable')
+    })
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+    try {
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        throw new Error('HTTP fixture unavailable')
       }
-      webview.focus()
-    }, fixture.secondBrowserTabId)
-
-    await waitForFocusedGroup(orcaPage, fixture.secondBrowserGroupId)
-    await expect
-      .poll(() =>
-        orcaPage.evaluate((browserTabId) => {
-          const webview = document.querySelector(
-            `[data-browser-overlay-tab-id="${browserTabId}"] webview`
+      const url = `http://127.0.0.1:${address.port}/`
+      const fixture = await createBrowserSplit(orcaPage, url)
+      const previous = await orcaPage.evaluate(
+        ({ fixture, url }) => {
+          const state = window.__store!.getState()
+          const worktreeId = state.activeWorktreeId!
+          const groups = [fixture.firstBrowserGroupId, fixture.secondBrowserGroupId]
+          const originals = [fixture.firstBrowserTabId, fixture.secondBrowserTabId]
+          const previous = groups.map(
+            (targetGroupId) =>
+              state.createBrowserTab(worktreeId, url, {
+                activate: true,
+                focusAddressBar: false,
+                targetGroupId
+              }).id
           )
-          return webview !== null && document.activeElement === webview
-        }, fixture.secondBrowserTabId)
+          const tabs = window.__store!.getState().unifiedTabsByWorktree[worktreeId]
+          for (const id of originals) {
+            state.activateTab(tabs.find((t) => t.entityId === id)!.id)
+          }
+          return previous
+        },
+        { fixture, url }
       )
-      .toBe(true)
+      const guestIds: number[] = []
+      for (const [tabId, pageId] of [
+        [fixture.firstBrowserTabId, fixture.firstBrowserPageId],
+        [fixture.secondBrowserTabId, fixture.secondBrowserPageId]
+      ]) {
+        await waitForBrowserGuestRegistration(orcaPage, tabId, pageId)
+        const guest = orcaPage.locator(`[data-browser-overlay-tab-id="${tabId}"] webview`)
+        await expect
+          .poll(() =>
+            guest.evaluate((element) => {
+              // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: locator selects Electron's webview element.
+              return (element as Electron.WebviewTag).executeJavaScript('document.title')
+            })
+          )
+          .toBe('Split focus fixture')
+        guestIds.push(
+          await guest.evaluate((element) => {
+            // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: locator selects Electron's webview element.
+            return (element as Electron.WebviewTag).getWebContentsId()
+          })
+        )
+      }
+      const focusedControls = (groupId: string) =>
+        orcaPage.locator(
+          `[data-tab-group-strip-id="${groupId}"] button[aria-haspopup="menu"][data-slot="tooltip-trigger"]`
+        )
+      await focusBrowserAddressBar(orcaPage, fixture.firstBrowserTabId)
+      for (const index of [1, 0, 1, 0]) {
+        await electronApp.evaluate(({ webContents }, guestId) => {
+          const guest = webContents.fromId(guestId)
+          if (!guest) {
+            throw new Error('Browser guest unavailable')
+          }
+          guest.sendInputEvent({ type: 'mouseDown', x: 20, y: 15, button: 'left', clickCount: 1 })
+          guest.sendInputEvent({ type: 'mouseUp', x: 20, y: 15, button: 'left', clickCount: 1 })
+        }, guestIds[index])
+        const groupId = index === 0 ? fixture.firstBrowserGroupId : fixture.secondBrowserGroupId
+        const otherId = index === 0 ? fixture.secondBrowserGroupId : fixture.firstBrowserGroupId
+        await expect(focusedControls(groupId)).toBeVisible()
+        await expect(focusedControls(otherId)).toHaveCount(0)
+        await expect
+          .poll(() =>
+            electronApp.evaluate(
+              ({ webContents }, id) =>
+                webContents.fromId(id)?.executeJavaScript('document.body.dataset.clicked'),
+              guestIds[index]
+            )
+          )
+          .toBe('true')
+      }
+      await electronApp.evaluate(({ webContents }, id) => {
+        const guest = webContents.fromId(id)
+        if (!guest) {
+          throw new Error('Browser guest unavailable')
+        }
+        guest.sendInputEvent({ type: 'keyDown', keyCode: 'Tab', modifiers: ['control'] })
+        guest.sendInputEvent({ type: 'keyUp', keyCode: 'Control' })
+      }, guestIds[0])
+      await expect(orcaPage.locator(`[data-tab-id="${previous[0]}"]`)).toHaveAttribute(
+        'data-active',
+        'true'
+      )
+      await expect(
+        orcaPage.locator(`[data-tab-id="${fixture.secondBrowserTabId}"]`)
+      ).toHaveAttribute('data-active', 'true')
+      await expect(orcaPage.locator(`[data-tab-id="${previous[1]}"]`)).toHaveAttribute(
+        'data-active',
+        'false'
+      )
+    } finally {
+      server.closeAllConnections()
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve()))
+      )
+    }
   })
 
   test('keeps browser Find available when split focus state is temporarily missing', async ({

@@ -45,6 +45,14 @@ export function setupGuestShortcutForwarding(args: {
   let ctrlTabSwitching = false
   const doubleTapDetector = new ModifierDoubleTapDetector()
   const resetDoubleTapDetector = (): void => doubleTapDetector.reset()
+  const notifyGuestInteraction = (): void => {
+    resolveRenderer(browserTabId)?.send('ui:browserGuestInteraction', browserTabId)
+  }
+  const mouseHandler = (_event: Electron.Event, input: Electron.MouseInputEvent): void => {
+    if (input.type === 'mouseDown') {
+      notifyGuestInteraction()
+    }
+  }
 
   const forwardBrowserPageZoom = (
     event: Electron.Event,
@@ -67,6 +75,10 @@ export function setupGuestShortcutForwarding(args: {
   }
 
   const handler = (event: Electron.Event, input: Electron.Input): void => {
+    // Why: update the owning split before forwarding shortcuts from a separate guest process.
+    if (input.type === 'keyDown') {
+      notifyGuestInteraction()
+    }
     const keybindings = getKeybindings?.()
     if (
       input.type === 'keyDown' &&
@@ -143,11 +155,13 @@ export function setupGuestShortcutForwarding(args: {
   }
 
   guest.on('before-input-event', handler)
+  guest.on('before-mouse-event', mouseHandler)
   guest.on('zoom-changed', zoomCommandHandler)
   guest.on('blur', resetDoubleTapDetector)
   return () => {
     try {
       guest.off('before-input-event', handler)
+      guest.off('before-mouse-event', mouseHandler)
       guest.off('zoom-changed', zoomCommandHandler)
       guest.off('blur', resetDoubleTapDetector)
     } catch {

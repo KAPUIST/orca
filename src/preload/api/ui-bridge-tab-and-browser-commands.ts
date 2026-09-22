@@ -9,6 +9,15 @@ import { browserFindSubscriptions } from '../preload-runtime-support'
 import type { PreloadApi } from '../api-types'
 
 export const uiTabAndBrowserCommandsApi = {
+  onBrowserGuestInteraction: (callback: (browserPageId: string) => void): (() => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, browserPageId: unknown): void => {
+      if (typeof browserPageId === 'string' && browserPageId.length > 0) {
+        callback(browserPageId)
+      }
+    }
+    ipcRenderer.on('ui:browserGuestInteraction', listener)
+    return () => ipcRenderer.removeListener('ui:browserGuestInteraction', listener)
+  },
   onRequestTabSetProfile: (
     callback: (data: {
       requestId: string

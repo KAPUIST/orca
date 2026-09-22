@@ -398,7 +398,7 @@ describe('guest mouse wheel browser zoom', () => {
 
 describe('setupGuestShortcutForwarding', () => {
   const browserTabId = 'tab-1'
-  let rendererSendMock: ReturnType<typeof vi.fn>
+  let rendererSendMock: ReturnType<typeof vi.fn<(...args: unknown[]) => void>>
   let guestOnMock: ReturnType<typeof vi.fn>
   let guestOffMock: ReturnType<typeof vi.fn>
 
@@ -410,7 +410,14 @@ describe('setupGuestShortcutForwarding', () => {
   }
 
   function makeRenderer() {
-    return { send: rendererSendMock } as unknown as Electron.WebContents
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the forwarding binding only calls this renderer stub through send.
+    return {
+      send: (channel: string, ...args: unknown[]) => {
+        if (channel !== 'ui:browserGuestInteraction') {
+          rendererSendMock(channel, ...args)
+        }
+      }
+    } as unknown as Electron.WebContents
   }
 
   function triggerBeforeInput(input: Partial<Electron.Input>): ReturnType<typeof vi.fn> {
