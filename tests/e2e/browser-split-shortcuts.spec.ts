@@ -189,13 +189,31 @@ test.describe('browser split shortcuts', () => {
         )
       await focusBrowserAddressBar(orcaPage, fixture.firstBrowserTabId)
       for (const index of [1, 0, 1, 0]) {
-        await electronApp.evaluate(({ webContents }, guestId) => {
+        await electronApp.evaluate(async ({ webContents }, guestId) => {
           const guest = webContents.fromId(guestId)
           if (!guest) {
             throw new Error('Browser guest unavailable')
           }
-          guest.sendInputEvent({ type: 'mouseDown', x: 20, y: 15, button: 'left', clickCount: 1 })
-          guest.sendInputEvent({ type: 'mouseUp', x: 20, y: 15, button: 'left', clickCount: 1 })
+          // CDP delivers real guest input without requiring native window focus.
+          const attached = !guest.debugger.isAttached()
+          if (attached) {
+            guest.debugger.attach('1.3')
+          }
+          try {
+            for (const type of ['mousePressed', 'mouseReleased']) {
+              await guest.debugger.sendCommand('Input.dispatchMouseEvent', {
+                type,
+                x: 20,
+                y: 15,
+                button: 'left',
+                clickCount: 1
+              })
+            }
+          } finally {
+            if (attached) {
+              guest.debugger.detach()
+            }
+          }
         }, guestIds[index])
         const groupId = index === 0 ? fixture.firstBrowserGroupId : fixture.secondBrowserGroupId
         const otherId = index === 0 ? fixture.secondBrowserGroupId : fixture.firstBrowserGroupId
@@ -211,13 +229,36 @@ test.describe('browser split shortcuts', () => {
           )
           .toBe('true')
       }
-      await electronApp.evaluate(({ webContents }, id) => {
+      await electronApp.evaluate(async ({ webContents }, id) => {
         const guest = webContents.fromId(id)
         if (!guest) {
           throw new Error('Browser guest unavailable')
         }
-        guest.sendInputEvent({ type: 'keyDown', keyCode: 'Tab', modifiers: ['control'] })
-        guest.sendInputEvent({ type: 'keyUp', keyCode: 'Control' })
+        const attached = !guest.debugger.isAttached()
+        if (attached) {
+          guest.debugger.attach('1.3')
+        }
+        try {
+          await guest.debugger.sendCommand('Input.dispatchKeyEvent', {
+            type: 'rawKeyDown',
+            key: 'Tab',
+            code: 'Tab',
+            windowsVirtualKeyCode: 9,
+            nativeVirtualKeyCode: 9,
+            modifiers: 2
+          })
+          await guest.debugger.sendCommand('Input.dispatchKeyEvent', {
+            type: 'keyUp',
+            key: 'Control',
+            code: 'ControlLeft',
+            windowsVirtualKeyCode: 17,
+            nativeVirtualKeyCode: 17
+          })
+        } finally {
+          if (attached) {
+            guest.debugger.detach()
+          }
+        }
       }, guestIds[0])
       await expect(orcaPage.locator(`[data-tab-id="${previous[0]}"]`)).toHaveAttribute(
         'data-active',
