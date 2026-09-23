@@ -62,7 +62,7 @@ export function setupGuestShortcutForwarding(args: {
   ): void => {
     event.preventDefault()
     const renderer = resolveRenderer(browserTabId)
-    renderer?.send('ui:zoomBrowserPage', direction)
+    renderer?.send('ui:zoomBrowserPage', { browserPageId: browserTabId, direction })
   }
 
   const forwardContext: GuestShortcutForwardContext = {

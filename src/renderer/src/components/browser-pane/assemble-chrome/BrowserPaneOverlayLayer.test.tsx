@@ -272,6 +272,14 @@ describe('BrowserPaneOverlayLayer', () => {
     expect(mocks.focusGroup).toHaveBeenCalledWith('wt-1', 'group-1')
   })
 
+  it('allows local focus while a remote viewer retains the page for painting', () => {
+    mocks.state!.activeGroupIdByWorktree['wt-1'] = 'other'
+    mocks.remotelyViewedPageIds.add('page-a')
+    render(<BrowserPaneOverlayLayer worktreeId="wt-1" isWorktreeActive />)
+    mocks.interactions.forEach((callback) => callback('page-a'))
+    expect(mocks.focusGroup).toHaveBeenCalledWith('wt-1', 'group-1')
+  })
+
   it('ignores retained background pages within a browser workspace', () => {
     mocks.state!.activeGroupIdByWorktree['wt-1'] = 'other'
     mocks.state!.browserTabsByWorktree['wt-1'] = [
