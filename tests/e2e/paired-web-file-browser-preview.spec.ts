@@ -47,6 +47,9 @@ test('opens a server worktree HTML file from the paired web explorer', async ({
     await host.client.call('repo.add', { path: testRepoPath, kind: 'git' })
     client = await launchPairedWebClient(host.app, host.offer)
     const page = client.page
+    await page.evaluate(async () => {
+      await window.__store?.getState().updateSettings({ uiLanguage: 'en' })
+    })
     await expect
       .poll(
         () =>
@@ -95,14 +98,13 @@ test('opens a server worktree HTML file from the paired web explorer', async ({
     const fileRow = page.locator('[data-file-explorer-row]').filter({ hasText: fileName })
     await expect(fileRow).toBeVisible({ timeout: 30_000 })
     await fileRow.click({ button: 'right' })
+    const openInBrowserItem = page.getByRole('menuitem', { name: 'Open in Orca Browser' })
+    await expect(openInBrowserItem).toBeVisible()
     await page.screenshot({
       path: testInfo.outputPath('before-file-open.png'),
       clip: { x: 1_000, y: 240, width: 430, height: 330 }
     })
-    await page
-      .getByRole('menuitem')
-      .filter({ has: page.locator('svg.lucide-globe') })
-      .click()
+    await openInBrowserItem.click()
     await expect(page.locator('[data-tab-id]').filter({ hasText: fileName })).toBeVisible({
       timeout: 30_000
     })
