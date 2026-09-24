@@ -223,10 +223,9 @@ export function openDetectedFilePath(
         openHtmlFileInBrowser(mappedFilePath, worktreeId)
         return
       }
-      // Why: the same gesture renders remote HTML too, through the doc preview; only an
-      // unsupported plan (e.g. a paired doc outside the worktree) falls back to source.
+      // Why: a remote HTML preview uses the owning host's available preview route.
       const plan = getWorkspaceFilePreviewPlan(useAppStore.getState(), worktreeId, mappedFilePath)
-      if (plan.status === 'doc-preview') {
+      if (plan.status === 'doc-preview' || plan.status === 'runtime-browser-tab') {
         activateAndRevealWorktree(worktreeId, { providesInitialSurface: true })
         openFileInBrowserTab({ filePath: mappedFilePath, worktreeId })
         return
