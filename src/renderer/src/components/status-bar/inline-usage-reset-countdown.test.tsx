@@ -66,7 +66,7 @@ describe('account row reset countdowns', () => {
     'keeps the %s label when the reset time is unknown',
     (window) => {
       render(<InlineUsageBars limits={limitsFor(window, null)} isFetching={false} />)
-      expect(screen.getByText(`${NAME[window]}`)).toBeTruthy()
+      expect(screen.getByText(window === 'weekly' ? 'wk' : NAME[window])).toBeTruthy()
       expect(vi.getTimerCount()).toBe(0)
     }
   )

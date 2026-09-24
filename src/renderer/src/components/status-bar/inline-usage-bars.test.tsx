@@ -67,9 +67,9 @@ describe('InlineUsageBars', () => {
 
     // Why: bars show % used with explicit "used" so compact labels are not ambiguous.
     expect(markup).toContain('>32% used</span>')
-    expect(markup).toContain('>Session</span>')
+    expect(markup).toContain('>5h</span>')
     expect(markup).toContain('>16% used</span>')
-    expect(markup).toContain('>Weekly</span>')
+    expect(markup).toContain('>wk</span>')
     expect(markup).toContain('>42% used</span>')
     expect(markup).toContain('>Fable</span>')
   })
@@ -89,7 +89,7 @@ describe('InlineUsageBars', () => {
     expect(markup).not.toContain('>Session</span>')
     // Non-session bars keep their fixed labels.
     expect(markup).toContain('>16% used</span>')
-    expect(markup).toContain('>Weekly</span>')
+    expect(markup).toContain('>wk</span>')
     expect(markup).toContain('>42% used</span>')
     expect(markup).toContain('>Fable</span>')
   })
@@ -140,9 +140,9 @@ describe('InlineUsageBars', () => {
     )
 
     expect(markup).toContain('>68% left</span>')
-    expect(markup).toContain('>Session</span>')
+    expect(markup).toContain('>5h</span>')
     expect(markup).toContain('>84% left</span>')
-    expect(markup).toContain('>Weekly</span>')
+    expect(markup).toContain('>wk</span>')
     expect(markup).toContain('>58% left</span>')
     expect(markup).toContain('>Fable</span>')
     expect(markup).toContain('width:68%')
