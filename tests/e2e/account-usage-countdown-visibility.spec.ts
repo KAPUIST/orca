@@ -60,9 +60,13 @@ test('inactive account countdowns remain readable at enlarged text size', async 
     })
   })
 
-  await orcaPage.getByRole('button', { name: /^(Usage|사용량)$/ }).click()
+  await orcaPage.locator('button[aria-label]:has([data-usage-bar])').click()
   await orcaPage.getByRole('menuitem', { name: /Claude/ }).hover()
-  await orcaPage.getByRole('menuitem', { name: /^(System default|시스템 기본값)$/ }).click()
+  await orcaPage
+    .getByRole('menu', { name: /Claude/ })
+    .getByRole('menuitem')
+    .first()
+    .click()
   const label = orcaPage.getByText('Fable 6d 7h', { exact: true })
   await expect(label).toBeVisible()
   await orcaPage.evaluate(() => {
