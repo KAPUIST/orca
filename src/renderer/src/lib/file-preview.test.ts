@@ -9,6 +9,7 @@ import {
 } from './file-preview'
 import { folderWorkspaceKey } from '../../../shared/workspace-scope'
 
+/** Keep owner resolution in visibility tests independent of the full app store. */
 function browserActionState(connectionId: string | null = null): never {
   return {
     repos: [{ id: 'repo-1', connectionId }],

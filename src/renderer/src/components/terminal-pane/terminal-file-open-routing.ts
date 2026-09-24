@@ -65,8 +65,7 @@ export function getTerminalFileContext(
   return buildWorkspaceFileContext(worktreeId, worktreePath, runtimeEnvironmentId)
 }
 
-// Why: a WSL-runtime pane prints POSIX paths even when the worktree lives on a
-// Windows drive, so the distro must come from the pane runtime, not the path shape.
+/** Map a WSL pane's POSIX path using its distro, even for Windows worktrees. */
 export function mapTerminalFilePath(
   filePath: string,
   worktreePath: string,

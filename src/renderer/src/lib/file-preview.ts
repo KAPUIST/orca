@@ -68,6 +68,7 @@ export function canShowWorkspaceFileBrowserAction(
   return plan.status !== 'unsupported' || plan.reason === 'outside-worktree'
 }
 
+/** Subscribe to owner changes while evaluating the current plan when the action runs. */
 export function useWorkspaceFileBrowserActionPredicate(
   worktreeId: string | null
 ): (filePath: string) => boolean {
@@ -132,6 +133,7 @@ export function getWorkspaceFileBrowserOpenTarget(params: {
   }
 }
 
+/** Reuse an open document before creating another desktop preview grant. */
 function openDocPreviewTab(
   state: AppState,
   params: { filePath: string; worktreeId: string; targetGroupId?: string; activate: boolean }
