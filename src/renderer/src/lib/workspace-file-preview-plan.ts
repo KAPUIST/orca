@@ -14,6 +14,7 @@ import type { AppState } from '@/store/types'
 export const REMOTE_FILE_BROWSER_UNSUPPORTED_MESSAGE =
   'Open in Orca Browser is unavailable for this file.'
 
+/** Translate at call time so the message uses the current locale. */
 function pairedOutsideWorktreeMessage(): string {
   return translate(
     'auto.lib.file.preview.pairedOutsideWorktree',
@@ -28,6 +29,7 @@ export type WorkspaceFilePreviewPlan =
   | { status: 'runtime-browser-tab'; url: string; title: string; environmentId: string }
   | { status: 'unsupported'; message: string; reason: 'no-channel' | 'outside-worktree' }
 
+/** Choose a preview on the file's owner without reading a server path on the client. */
 export function getWorkspaceFilePreviewPlan(
   state: AppState,
   worktreeId: string,

@@ -135,6 +135,7 @@ function schedulePendingEditorReveal(callback: () => void): void {
   pendingEditorRevealFrameIds.push(firstFrameId)
 }
 
+/** Route a terminal file link through its local, SSH, or paired execution owner. */
 export function openDetectedFilePath(
   filePath: string,
   line: number | null,

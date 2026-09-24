@@ -56,6 +56,7 @@ function openRuntimeFilePreviewTab(
     .catch(() => toast.error(failureMessage))
 }
 
+/** Keep known boundary errors actionable so opening the menu can explain them. */
 export function canShowWorkspaceFileBrowserAction(
   state: AppState,
   worktreeId: string,
@@ -167,6 +168,7 @@ function openDocPreviewTab(
   })
 }
 
+/** Open the planned preview and report asynchronous server creation failures. */
 export function openFileInBrowserTab(params: {
   filePath: string
   worktreeId: string
@@ -274,10 +276,7 @@ export function canPreviewLanguage(language: string): language is PreviewableLan
   return language === 'html'
 }
 
-// Why: "Open Preview to the Side" mirrors the VS Code pattern — the rendered
-// view goes into the group to the right of the editor, creating a right split
-// if one doesn't already exist. Keeps the editor source visible alongside the
-// preview instead of replacing the active tab.
+/** Open HTML beside its source in a right split, creating that split when needed. */
 export function openFilePreviewToSide(params: {
   language: string
   filePath: string
