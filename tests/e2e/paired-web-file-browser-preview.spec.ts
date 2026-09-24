@@ -1,10 +1,32 @@
 import { randomUUID } from 'node:crypto'
 import { rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
+import type { Page } from '@stablyai/playwright-test'
 import { expect, test } from './helpers/orca-app'
 import { openFileExplorer } from './helpers/file-explorer'
 import { launchHeadlessPairedRuntimeHost } from './helpers/headless-paired-runtime-host'
 import { launchPairedWebClient, type PairedWebClient } from './helpers/paired-electron-client'
+
+/** Map the visible browser workspace to its page on the paired server. */
+async function readServerBrowserPageId(
+  page: Page,
+  worktreeId: string,
+  fileName: string
+): Promise<string | null> {
+  return page.evaluate(
+    ({ worktreeId, fileName }) => {
+      const state = window.__store?.getState()
+      const workspace = state?.browserTabsByWorktree[worktreeId]?.find((tab) =>
+        tab.url.endsWith(fileName)
+      )
+      const activePageId = workspace?.activePageId
+      return activePageId
+        ? (state?.remoteBrowserPageHandlesByPageId[activePageId]?.remotePageId ?? null)
+        : null
+    },
+    { worktreeId, fileName }
+  )
+}
 
 test.skip(
   process.env.ORCA_E2E_WEB_CLIENT !== '1',
@@ -87,37 +109,9 @@ test('opens a server worktree HTML file from the paired web explorer', async ({
     await expect(page.getByTestId('remote-browser-frame')).toBeVisible({ timeout: 30_000 })
 
     await expect
-      .poll(
-        () =>
-          page.evaluate(
-            ({ selectedWorktreeId, fileName }) => {
-              const state = window.__store?.getState()
-              const workspace = state?.browserTabsByWorktree[selectedWorktreeId]?.find((tab) =>
-                tab.url.endsWith(fileName)
-              )
-              const pageId = workspace?.activePageId
-              return pageId
-                ? (state?.remoteBrowserPageHandlesByPageId[pageId]?.remotePageId ?? null)
-                : null
-            },
-            { selectedWorktreeId, fileName }
-          ),
-        { timeout: 30_000 }
-      )
+      .poll(() => readServerBrowserPageId(page, selectedWorktreeId, fileName), { timeout: 30_000 })
       .toBeTruthy()
-    const pageId = await page.evaluate(
-      ({ selectedWorktreeId, fileName }) => {
-        const state = window.__store?.getState()
-        const workspace = state?.browserTabsByWorktree[selectedWorktreeId]?.find((tab) =>
-          tab.url.endsWith(fileName)
-        )
-        const activePageId = workspace?.activePageId
-        return activePageId
-          ? (state?.remoteBrowserPageHandlesByPageId[activePageId]?.remotePageId ?? null)
-          : null
-      },
-      { selectedWorktreeId, fileName }
-    )
+    const pageId = await readServerBrowserPageId(page, selectedWorktreeId, fileName)
     if (!pageId) {
       throw new Error('Server browser page did not reach paired web')
     }
