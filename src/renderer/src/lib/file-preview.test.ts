@@ -39,6 +39,7 @@ const mocks = vi.hoisted(() => ({
   convertBrowserPage: vi.fn(),
   environmentId: null as string | null,
   connectionId: null as string | null,
+  worktreeRootUnavailable: false,
   layoutByWorktree: {} as Record<string, unknown>,
   toastError: vi.fn()
 }))
@@ -72,7 +73,8 @@ vi.mock('@/store', () => ({
       browserTabsByWorktree: mocks.browserTabsByWorktree,
       browserPagesByWorkspace: mocks.browserPagesByWorkspace,
       convertBrowserPage: mocks.convertBrowserPage,
-      getKnownWorktreeById: () => ({ id: 'wt-1', path: '/srv/repo' }),
+      getKnownWorktreeById: () =>
+        mocks.worktreeRootUnavailable ? undefined : { id: 'wt-1', path: '/srv/repo' },
       groupsByWorktree: {},
       layoutByWorktree: mocks.layoutByWorktree,
       repos: [{ id: 'repo-1', connectionId: mocks.connectionId }],
@@ -88,6 +90,7 @@ beforeEach(() => {
   mocks.browserAvailability = { state: 'enabled', provider: 'local-client' }
   mocks.environmentId = null
   mocks.connectionId = null
+  mocks.worktreeRootUnavailable = false
   mocks.layoutByWorktree = {}
   mocks.browserTabsByWorktree = {}
   mocks.browserPagesByWorkspace = {}
@@ -145,6 +148,22 @@ describe('openFileInBrowserTab', () => {
       placementPreference: 'server'
     })
     expect(mocks.createBrowserTab).not.toHaveBeenCalled()
+  })
+
+  it('waits for a known worktree root before opening a paired-web server file', () => {
+    vi.stubGlobal('__ORCA_WEB_CLIENT__', true)
+    mocks.environmentId = 'runtime-1'
+    mocks.worktreeRootUnavailable = true
+    mocks.browserAvailability = { state: 'enabled', provider: 'paired-runtime' }
+
+    const plan = openFileInBrowserTab({ filePath: '/srv/repo/example.html', worktreeId: 'wt-1' })
+
+    expect(plan).toEqual({
+      status: 'unsupported',
+      message: REMOTE_FILE_BROWSER_UNSUPPORTED_MESSAGE,
+      reason: 'no-channel'
+    })
+    expect(mocks.createWebRuntimeSessionBrowserTab).not.toHaveBeenCalled()
   })
 
   it('refuses an SSH file in paired web rather than opening an Electron-only preview', () => {
@@ -210,6 +229,21 @@ describe('openFileInBrowserTab', () => {
   it('renders a paired-runtime file as a local doc preview instead of a runtime browser tab', () => {
     mocks.environmentId = 'runtime-1'
     mocks.browserAvailability = { state: 'enabled', provider: 'paired-runtime' }
+
+    const plan = openFileInBrowserTab({
+      filePath: '/srv/repo/docs/example.html',
+      worktreeId: 'wt-1'
+    })
+
+    expect(plan).toEqual({ status: 'doc-preview' })
+    expect(mocks.createBrowserTab).toHaveBeenCalledWith(
+      ...docPreviewCall('/srv/repo/docs/example.html', { activate: true })
+    )
+  })
+
+  it('keeps the Electron doc preview available while the paired root is unresolved', () => {
+    mocks.environmentId = 'runtime-1'
+    mocks.worktreeRootUnavailable = true
 
     const plan = openFileInBrowserTab({
       filePath: '/srv/repo/docs/example.html',

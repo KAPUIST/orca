@@ -56,7 +56,7 @@ export function getWorkspaceFilePreviewPlan(
   const runtimeEnvironmentId = getRuntimeEnvironmentIdForWorktree(state, worktreeId)
   if (runtimeEnvironmentId) {
     const worktreeRoot = state.getKnownWorktreeById(worktreeId)?.path ?? null
-    if (!getRelativePathInsideRoot(filePath, worktreeRoot)) {
+    if (worktreeRoot && !getRelativePathInsideRoot(filePath, worktreeRoot)) {
       return {
         status: 'unsupported',
         message: pairedOutsideWorktreeMessage(),
@@ -64,6 +64,13 @@ export function getWorkspaceFilePreviewPlan(
       }
     }
     if (isPairedWebClientWindow()) {
+      if (!worktreeRoot) {
+        return {
+          status: 'unsupported',
+          message: REMOTE_FILE_BROWSER_UNSUPPORTED_MESSAGE,
+          reason: 'no-channel'
+        }
+      }
       const availability = getClientCreationActionPolicy(state, worktreeId)['managed-browser']
       if (availability.state !== 'enabled') {
         return { status: 'unsupported', message: availability.reason, reason: 'no-channel' }

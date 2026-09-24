@@ -90,33 +90,33 @@ test('opens a server worktree HTML file from the paired web explorer', async ({
       .poll(
         () =>
           page.evaluate(
-            ({ selectedWorktreeId, filePath }) => {
+            ({ selectedWorktreeId, fileName }) => {
               const state = window.__store?.getState()
               const workspace = state?.browserTabsByWorktree[selectedWorktreeId]?.find((tab) =>
-                tab.url.includes(filePath)
+                tab.url.endsWith(fileName)
               )
               const pageId = workspace?.activePageId
               return pageId
                 ? (state?.remoteBrowserPageHandlesByPageId[pageId]?.remotePageId ?? null)
                 : null
             },
-            { selectedWorktreeId, filePath }
+            { selectedWorktreeId, fileName }
           ),
         { timeout: 30_000 }
       )
       .toBeTruthy()
     const pageId = await page.evaluate(
-      ({ selectedWorktreeId, filePath }) => {
+      ({ selectedWorktreeId, fileName }) => {
         const state = window.__store?.getState()
         const workspace = state?.browserTabsByWorktree[selectedWorktreeId]?.find((tab) =>
-          tab.url.includes(filePath)
+          tab.url.endsWith(fileName)
         )
         const activePageId = workspace?.activePageId
         return activePageId
           ? (state?.remoteBrowserPageHandlesByPageId[activePageId]?.remotePageId ?? null)
           : null
       },
-      { selectedWorktreeId, filePath }
+      { selectedWorktreeId, fileName }
     )
     if (!pageId) {
       throw new Error('Server browser page did not reach paired web')
