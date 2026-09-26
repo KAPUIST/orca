@@ -34,6 +34,7 @@ const SEARCH_ENGINE_URLS: Record<SearchEngine, string> = {
 
 export const DEFAULT_SEARCH_ENGINE: SearchEngine = 'google'
 
+/** Defaults scheme-less development addresses to HTTP; this does not imply certificate trust. */
 export function classifySchemeLessLocalDevAddress(rawInput: string): URL | null {
   const trimmed = rawInput.trim()
   if (!LOCAL_ADDRESS_PATTERN.test(trimmed)) {
@@ -46,6 +47,7 @@ export function classifySchemeLessLocalDevAddress(rawInput: string): URL | null 
   }
 }
 
+/** Normalizes host spelling so case, IPv6 brackets, and a trailing dot do not affect comparisons. */
 function normalizeCertificateHostname(hostname: string): string {
   const lower = hostname.trim().toLowerCase()
   const unbracketed = lower.startsWith('[') && lower.endsWith(']') ? lower.slice(1, -1) : lower
@@ -268,6 +270,7 @@ export function isAbsoluteFilesystemPathInput(input: string): boolean {
   )
 }
 
+/** Encodes filenames as path segments while preserving a Windows drive colon. */
 function absolutePathToFileUrl(filePath: string): string {
   const normalizedPath = filePath.replaceAll('\\', '/')
   const segments = normalizedPath.split('/').map((segment, index) => {
@@ -281,6 +284,7 @@ function absolutePathToFileUrl(filePath: string): string {
     : `file:///${segments.join('/')}`
 }
 
+/** Keeps the UNC server as the file URL authority so network shares stay addressable. */
 function windowsUncPathToFileUrl(filePath: string): string {
   const normalizedPath = filePath.replaceAll('\\', '/').replace(/^\/+/, '')
   const [host, ...pathSegments] = normalizedPath.split('/')
