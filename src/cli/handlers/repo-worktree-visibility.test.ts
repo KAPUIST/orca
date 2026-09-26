@@ -7,9 +7,8 @@ import { dispatch } from '../dispatch'
 import { RuntimeClient } from '../runtime-client'
 
 /** Exercises the real parser and dispatcher without contacting an installed Orca runtime. */
-function createCommand(isRemote = false) {
+function createCommand() {
   const client = new RuntimeClient(join(tmpdir(), 'orca-visibility-cli-test'), 1000, null, null)
-  vi.spyOn(client, 'isRemote', 'get').mockReturnValue(isRemote)
   const call = vi.spyOn(client, 'call').mockResolvedValue({
     id: 'visibility-test',
     ok: true,
@@ -47,8 +46,8 @@ describe('repo set-worktree-visibility', () => {
     expect(output).toHaveBeenCalledWith(expect.stringContaining('"repo"'))
   })
 
-  it('preserves a remote repo selector without resolving a local path', async () => {
-    const { call, run } = createCommand(true)
+  it('forwards the repo selector verbatim, independent of the runtime transport', async () => {
+    const { call, run } = createCommand()
     await run(['--repo', 'path:/srv/project', '--external', 'show'])
     expect(call).toHaveBeenCalledExactlyOnceWith('repo.update', {
       repo: 'path:/srv/project',
@@ -76,16 +75,11 @@ describe('repo set-worktree-visibility', () => {
   })
 
   it('reports a repo that disappeared instead of printing a successful update', async () => {
-    const { call, run } = createCommand()
-    call.mockResolvedValueOnce({
-      id: 'visibility-test',
-      ok: true,
-      _meta: { runtimeId: 'visibility-runtime' },
-      result: { repo: null }
-    })
-    await expect(run(['--repo', 'id:repo-1', '--external', 'show'])).rejects.toMatchObject({
-      code: 'not_found'
-    })
+    const { call, output, run } = createCommand()
+    const error = new Error('repo_not_found')
+    call.mockRejectedValueOnce(error)
+    await expect(run(['--repo', 'id:repo-1', '--external', 'show'])).rejects.toBe(error)
+    expect(output).not.toHaveBeenCalled()
   })
 
   it('propagates runtime errors', async () => {

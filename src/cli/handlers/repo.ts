@@ -12,14 +12,11 @@ async function setRepoWorktreeVisibility({ flags, client, json }: HandlerContext
   if (visibility !== 'show' && visibility !== 'hide' && visibility !== 'inherit') {
     throw new RuntimeClientError('invalid_argument', '--external must be show, hide, or inherit.')
   }
-  const result = await client.call<{ repo: Record<string, unknown> | null }>('repo.update', {
+  const result = await client.call<{ repo: Record<string, unknown> }>('repo.update', {
     repo,
     updates: { externalWorktreeVisibility: visibility === 'inherit' ? null : visibility }
   })
-  if (!result.result.repo) {
-    throw new RuntimeClientError('not_found', 'Repo no longer exists. Run `orca repo list`.')
-  }
-  printResult({ ...result, result: { repo: result.result.repo } }, json, formatRepoShow)
+  printResult(result, json, formatRepoShow)
 }
 
 export const REPO_HANDLERS: Record<string, CommandHandler> = {
