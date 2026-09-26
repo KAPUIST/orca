@@ -52,6 +52,7 @@ function normalizeCertificateHostname(hostname: string): string {
   return unbracketed.endsWith('.') ? unbracketed.slice(0, -1) : unbracketed
 }
 
+/** Rejects malformed DNS labels before local-host eligibility and navigation checks. */
 function isValidDnsName(name: string): boolean {
   if (name.length === 0 || name.length > 253) {
     return false
@@ -64,6 +65,7 @@ function isValidDnsName(name: string): boolean {
     )
 }
 
+/** Avoids parsing a dotted host and port as a scheme; .localhost defaults to HTTP. */
 function classifySchemeLessDomainPortAddress(input: string): URL | null {
   const match = /^([^\s/\\:@?#]+):\d+(?:[/?#].*)?$/.exec(input)
   if (!match || !match[1].includes('.')) {
@@ -81,6 +83,7 @@ function classifySchemeLessDomainPortAddress(input: string): URL | null {
   }
 }
 
+/** Accepts canonical dotted 127/8 addresses only, excluding legacy URL-parser shorthand. */
 function isIpv4Loopback(hostname: string): boolean {
   const octets = hostname.split('.')
   if (octets.length !== 4 || octets.some((octet) => !/^\d{1,3}$/.test(octet))) {
@@ -284,6 +287,7 @@ function windowsUncPathToFileUrl(filePath: string): string {
   return `file://${host}/${pathSegments.map(encodeURIComponent).join('/')}`
 }
 
+/** Resolves address-bar input to a browser URL or search; unsupported schemes return null. */
 export function normalizeBrowserNavigationUrl(
   rawUrl: string,
   searchEngine?: SearchEngine | null,
@@ -307,7 +311,6 @@ export function normalizeBrowserNavigationUrl(
     return absolutePathToFileUrl(trimmed)
   }
 
-  // URL otherwise reads the dotted hostname before ':' as a custom scheme.
   const domainPortAddress = classifySchemeLessDomainPortAddress(trimmed)
   if (domainPortAddress) {
     return domainPortAddress.toString()
