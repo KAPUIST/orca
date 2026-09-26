@@ -129,7 +129,7 @@ export function SourceControlPanelReady(props: SourceControlPanelReadyProps) {
         {hiddenFileCount > 0 && (
           <div className="flex items-center gap-2 px-3 py-1 text-xs text-muted-foreground">
             <span role="status">
-              {translate('sourceControl.fileFilters.hidden', '{{count}} files hidden', {
+              {translate('sourceControl.fileFilters.hidden', 'Hidden files: {{count}}', {
                 count: hiddenFileCount
               })}
             </span>
