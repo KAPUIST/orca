@@ -1,3 +1,4 @@
+/** Keeps grouped and escaped commas inside globs so search engines receive complete patterns. */
 export function splitSearchGlobPatterns(patterns: string): string[] {
   const out: string[] = []
   let current = ''
