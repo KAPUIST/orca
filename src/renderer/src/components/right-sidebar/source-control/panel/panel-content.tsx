@@ -179,7 +179,7 @@ export function SourceControlPanelContent(props: SourceControlPanelReadyProps) {
         branchSummary,
         hasUncommittedEntries,
         branchEntries.length > 0,
-        Boolean(normalizedFilter) || hasFileVisibilityFilter
+        Boolean(normalizedFilter)
       ) && branchSummary ? (
         <CompareUnavailable
           summary={branchSummary}

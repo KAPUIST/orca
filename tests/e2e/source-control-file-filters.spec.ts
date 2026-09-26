@@ -53,6 +53,8 @@ test('filters Source Control by extension and gitignore groups without changing 
   await openGoldenSourceControl(orcaPage, testRepoPath, fixture)
   const rows = orcaPage.getByTestId('source-control-entry')
   await expect(rows).toHaveCount(5)
+  const commits = orcaPage.getByRole('button', { name: 'Commits', exact: true })
+  await expect(commits).toBeVisible()
   // The desktop remains hidden; Playwright input and screenshots use CDP.
   expect(
     await electronApp.evaluate(({ BrowserWindow }) =>
@@ -71,6 +73,7 @@ test('filters Source Control by extension and gitignore groups without changing 
   await expect(rows.filter({ hasText: 'ordinary.snap' })).toHaveCount(0)
   await expect(rows.filter({ hasText: 'important.snap' })).toBeVisible()
   await expect(orcaPage.getByText('Hidden files: 2', { exact: true })).toBeVisible()
+  await expect(commits).toBeVisible()
   await expect(orcaPage.getByRole('button', { name: 'Stage all', exact: true })).toHaveCount(0)
   await expect(orcaPage.getByRole('button', { name: 'Stage All', exact: true })).toBeVisible()
   await captureFileFilters(orcaPage, testInfo, 'after-filters')
@@ -90,6 +93,7 @@ test('filters Source Control by extension and gitignore groups without changing 
   await expect(rows).toHaveCount(0)
   await expect(orcaPage.getByText('Hidden files: 5', { exact: true })).toBeVisible()
   await expect(orcaPage.getByText('No matching files', { exact: true })).toBeVisible()
+  await expect(commits).toBeVisible()
   await expect(orcaPage.getByText('No changes on this branch', { exact: true })).toHaveCount(0)
   await orcaPage.getByRole('button', { name: 'Reset filters', exact: true }).click()
   await expect(rows).toHaveCount(5)

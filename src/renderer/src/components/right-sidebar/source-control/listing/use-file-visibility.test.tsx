@@ -59,7 +59,7 @@ describe('source control visibility projection', () => {
       expect(result.current.grouped.unstaged).toHaveLength(2)
       expect(result.current.grouped.untracked).toHaveLength(1)
       expect(result.current.unfilteredDisplaySectionsById.get('unstaged')?.items).toHaveLength(2)
-      expect(result.current.isGitHistoryVisible).toBe(false)
+      expect(result.current.isGitHistoryVisible).toBe(true)
       expect(
         result.current.visibleSelectionEntries.every((entry) => entry.entry.path === 'src/app.ts')
       ).toBe(true)
@@ -100,5 +100,19 @@ describe('source control visibility projection', () => {
     expect(result.current.hiddenFileCount).toBe(0)
     expect(result.current.hasFileVisibilityFilter).toBe(false)
     expect(result.current.isGitHistoryVisible).toBe(true)
+  })
+
+  it.each([
+    { excludedExtensions: new Set(['.absent']) },
+    {
+      hiddenFileGroups: new Set(['Generated']),
+      fileGroups: [{ name: 'Generated', patterns: ['generated/**'] }]
+    }
+  ])('preserves history when a selected filter hides no paths', (selection) => {
+    const { result } = renderHook(() => useSourceControlFileProjection({ ...base, ...selection }))
+    expect(result.current.hasFileVisibilityFilter).toBe(true)
+    expect(result.current.hiddenFileCount).toBe(0)
+    expect(result.current.isGitHistoryVisible).toBe(true)
+    expect(Object.values(result.current.filteredGrouped).flat()).toHaveLength(entries.length)
   })
 })

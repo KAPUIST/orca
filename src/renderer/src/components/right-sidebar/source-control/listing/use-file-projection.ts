@@ -163,7 +163,6 @@ export function useSourceControlFileProjection({
   const normalizedFilter = fileFilterState.normalizedFilter
   const isGitHistoryVisible =
     !normalizedFilter &&
-    !hasFileVisibilityFilter &&
     !fileFilterState.tooLarge &&
     Boolean(activeWorktreeId && worktreePath && !isFolder)
 
