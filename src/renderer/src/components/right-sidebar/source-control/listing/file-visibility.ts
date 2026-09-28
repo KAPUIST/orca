@@ -1,4 +1,5 @@
 import ignore from 'ignore'
+import { compareFileNames } from '../../../../../../shared/file-name-sort'
 import type { SourceControlFileGroup } from '../../../../../../shared/source-control-file-groups'
 import type { SourceControlPathEntry } from './file-filter'
 
@@ -21,7 +22,7 @@ export function getSourceControlExtensionCounts(
     counts.set(extension, (counts.get(extension) ?? 0) + 1)
   }
   return [...counts]
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => compareFileNames(a, b))
     .map(([extension, count]) => ({
       extension,
       count
