@@ -1,3 +1,4 @@
+import { agentSessionRefusalError } from '../../shared/agent-session-wire-refusals'
 import { commitConversationCommandRecord } from './agent-session-conversation-command-record'
 import { setAgentSessionRecordConversationName } from './agent-session-record-conversation-name'
 /** Durable single-writer session records and their operation ledger. */
@@ -56,10 +57,6 @@ import {
   type AgentSessionRestartProbeArgs
 } from './agent-session-restart-reconciliation'
 import { replaceAgentSessionRecordOptions } from './agent-session-record-options'
-import {
-  setAgentSessionReservationProcesslessProof,
-  type AgentSessionReservationProcesslessProof
-} from './agent-session-processless-reservation'
 import {
   commitAgentSessionReservation,
   type AgentSessionReserveRequest,
@@ -205,13 +202,6 @@ export class AgentSessionRecordStore {
     )
   }
 
-  setReservationProcesslessProof = (
-    args: AgentSessionReservationProcesslessProof & { processlessAt: number | null }
-  ): Promise<AgentSessionRecord> =>
-    this.mutate(args.sessionId, (record) =>
-      setAgentSessionReservationProcesslessProof({ ...args, record })
-    )
-
   async proveOwner(args: {
     sessionId: string
     fence: number
@@ -259,9 +249,7 @@ export class AgentSessionRecordStore {
     probe: AgentSessionOwnerProbe
     now: number
   }): Promise<AgentSessionRecord> {
-    return this.mutate(args.sessionId, (record) =>
-      evictAgentSessionOwner({ ...args, record, journalSettlement: 'required' })
-    )
+    return this.mutate(args.sessionId, (record) => evictAgentSessionOwner({ ...args, record }))
   }
 
   async transitionHandoff(
@@ -325,16 +313,6 @@ export class AgentSessionRecordStore {
     await this.transact(() => settleAgentSessionOperationInto(this.state, args))
   }
 
-  async markClaimConflicted(sessionId: string, now: number): Promise<AgentSessionRecord> {
-    return this.mutate(sessionId, (record) => ({
-      ...record,
-      updatedAt: now,
-      // Why: a conflicted key must stay conflicted across a restart; it cannot resolve to free
-      // merely because the process that observed the conflict is gone.
-      lease: { ...record.lease, claimStatus: 'conflicted', handoffStage: 'manual-recovery' }
-    }))
-  }
-
   replaceSessionOptions = (args: AgentSessionOptionsReplacement): Promise<AgentSessionRecord> =>
     this.mutate(args.sessionId, (record) => replaceAgentSessionRecordOptions(record, args))
 
@@ -349,11 +327,9 @@ export class AgentSessionRecordStore {
     return this.transact(() => {
       const record = this.state.records.get(sessionId)
       if (!record) {
-        throw new Error(
-          this.isSessionUnreadable(sessionId)
-            ? 'execution_owner_reconciling'
-            : 'agent_session_identity_required'
-        )
+        throw this.isSessionUnreadable(sessionId)
+          ? agentSessionRefusalError('execution_owner_reconciling', { reason: 'recordUnreadable' })
+          : agentSessionRefusalError('agent_session_identity_required', { reason: 'recordMissing' })
       }
       const next = apply(record)
       this.state.records.set(sessionId, next)

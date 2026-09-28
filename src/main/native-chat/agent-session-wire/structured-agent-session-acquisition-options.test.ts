@@ -15,6 +15,7 @@ import {
   attachFingerprintFields,
   type AgentSessionAttachParams
 } from './structured-agent-session-attach'
+import { openTestAttachConversation } from './structured-agent-session-attach-test-conversation'
 import { performAttach } from './structured-agent-session-attach-flow'
 import type { AgentSessionCreatePhaseRecorder } from '../../observability/agent-session-instrumentation'
 
@@ -107,7 +108,7 @@ function expectSettledAttachLease(record: AgentSessionRecord | null): void {
   expect(record).not.toBeNull()
   const lease = record!.lease
   const durableState = lease.handoffStage ?? lease.claimStatus
-  expect(['live', 'released', 'recovering', 'manual-recovery']).toContain(durableState)
+  expect(['live', 'released', 'recovering']).toContain(durableState)
   expect(lease.handoffStage).not.toBe('new-owner-proving')
 }
 
@@ -154,6 +155,7 @@ describe('structured session acquisition options', () => {
       store: initialStore,
       adapter: withHistory('created'),
       journalRoot: root,
+      openConversation: openTestAttachConversation(root!),
       authority: {
         spawnToken: 'spawn-a',
         claimKeyId: 'key-1',
@@ -194,6 +196,7 @@ describe('structured session acquisition options', () => {
       store,
       adapter: withHistory('resumed'),
       journalRoot: root,
+      openConversation: openTestAttachConversation(root!),
       authority: {
         spawnToken: 'spawn-b',
         claimKeyId: 'key-1',
@@ -228,6 +231,7 @@ describe('structured session acquisition options', () => {
       store,
       adapter: sessionAdapter,
       journalRoot: root,
+      openConversation: openTestAttachConversation(root!),
       authority: {
         spawnToken: 'spawn-a',
         claimKeyId: 'key-1',
@@ -260,6 +264,7 @@ describe('structured session acquisition options', () => {
         store,
         adapter: sessionAdapter,
         journalRoot: root!,
+        openConversation: openTestAttachConversation(root!),
         authority: {
           spawnToken,
           claimKeyId: 'key-1',
@@ -291,6 +296,7 @@ describe('structured session acquisition options', () => {
       store,
       adapter: adapter({ origin: 'created' }),
       journalRoot: root,
+      openConversation: openTestAttachConversation(root!),
       authority: {
         spawnToken: 'spawn-a',
         claimKeyId: 'key-1',
@@ -330,6 +336,7 @@ describe('structured session acquisition options', () => {
         }
       }),
       journalRoot: root,
+      openConversation: openTestAttachConversation(root!),
       authority: {
         spawnToken: 'spawn-b',
         claimKeyId: 'key-1',
@@ -369,6 +376,7 @@ describe('structured session acquisition options', () => {
       store,
       adapter: sessionAdapter,
       journalRoot: root,
+      openConversation: openTestAttachConversation(root!),
       authority: {
         spawnToken: 'spawn-a',
         claimKeyId: 'key-1',
@@ -408,6 +416,7 @@ describe('structured session acquisition options', () => {
         store,
         adapter: failingAdapter,
         journalRoot: root,
+        openConversation: openTestAttachConversation(root!),
         authority: {
           spawnToken: 'spawn-a',
           claimKeyId: 'key-1',
@@ -421,7 +430,10 @@ describe('structured session acquisition options', () => {
       })
     ).resolves.toEqual({
       ok: false,
-      refusal: { code: 'agent_session_operation_invalid', message: 'model list unavailable' }
+      refusal: {
+        code: 'agent_session_operation_invalid',
+        message: "Codex couldn't restart. Send your message to try again."
+      }
     })
     expect(releaseAcquisition).toHaveBeenCalledOnce()
     expect(store.getRecord(SESSION)?.lease.ownerProcess).toBeNull()
@@ -499,6 +511,7 @@ describe('structured session acquisition options', () => {
           store: target,
           adapter: failingAdapter,
           journalRoot: root!,
+          openConversation: openTestAttachConversation(root!, failingAdapter),
           authority: {
             spawnToken: operationId === CREATE_OPERATION ? 'spawn-a' : 'spawn-b',
             claimKeyId: 'key-1',
@@ -511,12 +524,16 @@ describe('structured session acquisition options', () => {
           onAttached: () => {}
         })
 
-      // A proven exit before the journal opens is answered once, as the refusal its replay gives.
+      // A proven exit before the journal opens is answered once, as the refusal its replay gives;
+      // no exit was observed, so it names no situation.
       const failed = perform(store, CREATE_OPERATION, null)
       await (exitProven && failurePoint !== 'journal'
         ? expect(failed).resolves.toEqual({
             ok: false,
-            refusal: { code: 'agent_session_operation_invalid', message: injected.message }
+            refusal: {
+              code: 'agent_session_operation_invalid',
+              message: "Codex couldn't restart. Send your message to try again."
+            }
           })
         : expect(failed).rejects.toThrow(
             exitProven ? injected.message : 'agent_session_acquisition_exit_unproven'
@@ -553,14 +570,12 @@ describe('structured session acquisition options', () => {
         })
         await expect(perform(reopened, RESUME_OPERATION, 2)).resolves.toMatchObject({ ok: true })
         expectSettledAttachLease(reopened.getRecord(SESSION))
-      } else {
+      } else if (failurePoint === 'proof' || failurePoint === 'journal') {
+        // A recorded owner goes to recovery, which concludes about it before the next start.
         expect(failedRecord?.lease).toMatchObject({
           runtimeFence: 1,
           claimStatus: failurePoint === 'journal' ? 'live' : 'reserved',
-          handoffStage:
-            failurePoint === 'proof' || failurePoint === 'journal'
-              ? 'recovering'
-              : 'manual-recovery',
+          handoffStage: 'recovering',
           // The settled operation must not stay named by the lease as an in-flight transfer.
           handoffOperationId: null,
           reservedSpawnToken: 'spawn-a'
@@ -569,6 +584,19 @@ describe('structured session acquisition options', () => {
           ok: false,
           refusal: { code: 'agent_session_ownership_unknown' }
         })
+      } else {
+        // No owner was recorded, and the adapter closed the stdio of anything it spawned: released,
+        // with no death evidence, since nothing proved one.
+        expect(failedRecord?.lease).toMatchObject({
+          runtimeFence: 2,
+          claimStatus: 'released',
+          handoffStage: null,
+          handoffOperationId: null,
+          ownerProcess: null,
+          reservedSpawnToken: null,
+          deathEvidence: null
+        })
+        await expect(perform(reopened, RESUME_OPERATION, 2)).resolves.toMatchObject({ ok: true })
       }
     })
   })
@@ -585,6 +613,7 @@ describe('the tab a create reserves', () => {
       store,
       adapter: adapter({ origin: 'created' }),
       journalRoot: root!,
+      openConversation: openTestAttachConversation(root!),
       authority: {
         spawnToken: 'spawn-a',
         claimKeyId: 'key-1',
