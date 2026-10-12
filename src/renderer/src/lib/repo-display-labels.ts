@@ -36,6 +36,11 @@ function hasDuplicateLabels(labels: readonly string[]): boolean {
   return new Set(labels).size !== labels.length
 }
 
+/**
+ * Labels each repo by name, keyed by host and path. Same-name repos get the
+ * shortest parent-path suffix that separates their distinct paths; same-path
+ * repos on different hosts share one label.
+ */
 export function getRepoDisplayLabelsByPath(
   items: readonly RepoDisplayLabelItem[]
 ): Map<string, string> {
