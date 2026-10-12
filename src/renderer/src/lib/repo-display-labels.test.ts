@@ -71,6 +71,27 @@ describe('getRepoDisplayLabelsByPath', () => {
     expect(labels.get(getRepoDisplayLabelKey(sshRepo))).toBeDefined()
   })
 
+  it('keeps the plain name for cross-host repos whose path and name both match', () => {
+    // A path suffix cannot separate same-path twins; the host badge does.
+    const localRepo = { path: '/Users/alice/code/app', displayName: 'app' }
+    const remoteRepo = { ...localRepo, executionHostId: 'runtime:home' as const }
+    const labels = getRepoDisplayLabelsByPath([localRepo, remoteRepo])
+
+    expect(labels.get(getRepoDisplayLabelKey(localRepo))).toBe('app')
+    expect(labels.get(getRepoDisplayLabelKey(remoteRepo))).toBe('app')
+  })
+
+  it('stops at the shortest suffix that separates distinct paths when a same-path twin exists', () => {
+    const localRepo = { path: '/Users/alice/work/app', displayName: 'app' }
+    const remoteTwin = { ...localRepo, executionHostId: 'runtime:home' as const }
+    const otherRepo = { path: '/Users/alice/play/app', displayName: 'app' }
+    const labels = getRepoDisplayLabelsByPath([localRepo, remoteTwin, otherRepo])
+
+    expect(labels.get(getRepoDisplayLabelKey(localRepo))).toBe('work/app')
+    expect(labels.get(getRepoDisplayLabelKey(remoteTwin))).toBe('work/app')
+    expect(labels.get(getRepoDisplayLabelKey(otherRepo))).toBe('play/app')
+  })
+
   it('normalizes Windows separators to slash display labels', () => {
     const labels = getRepoDisplayLabelsByPath([
       { path: 'C:\\workspace\\payments\\api', displayName: 'api' },

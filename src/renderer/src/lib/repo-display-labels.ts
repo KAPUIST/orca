@@ -51,21 +51,28 @@ export function getRepoDisplayLabelsByPath(
   }
 
   for (const collidingItems of itemsByName.values()) {
-    if (collidingItems.length < 2) {
+    // Why: no suffix separates same-path twins on different hosts, so only distinct paths set the depth.
+    const distinctPathItems = [
+      ...new Map(
+        collidingItems.map((item) => [normalizePathSegments(item.path).join('/'), item])
+      ).values()
+    ]
+    if (distinctPathItems.length < 2) {
       continue
     }
     const maxDepth = Math.max(
-      ...collidingItems.map((item) => normalizePathSegments(item.path).length)
+      ...distinctPathItems.map((item) => normalizePathSegments(item.path).length)
     )
     let depth = 1
-    let nextLabels = collidingItems.map((item) => labelForDepth(item, depth))
-    while (depth < maxDepth && hasDuplicateLabels(nextLabels)) {
+    while (
+      depth < maxDepth &&
+      hasDuplicateLabels(distinctPathItems.map((item) => labelForDepth(item, depth)))
+    ) {
       depth += 1
-      nextLabels = collidingItems.map((item) => labelForDepth(item, depth))
     }
-    collidingItems.forEach((item, index) => {
-      labels.set(getRepoDisplayLabelKey(item), nextLabels[index] ?? item.displayName)
-    })
+    for (const item of collidingItems) {
+      labels.set(getRepoDisplayLabelKey(item), labelForDepth(item, depth))
+    }
   }
 
   return labels
